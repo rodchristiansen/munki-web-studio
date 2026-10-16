@@ -15,6 +15,27 @@ the same package data and editor; the choice is about scanning and working densi
 It includes a small manifest view and a review panel to make the proposed workflow
 concrete. It has no repository access, authentication, persistence, or publication.
 
+## MunkiStudio visual language
+
+The first split-view study was accepted as the direction on 2026-10-16. This
+iteration brings in the native app's visual language: a quiet source-list sidebar,
+compact unified toolbar, category/type/directory grouping, small package glyphs,
+and a prominent selected row. The editor uses uppercase section labels over
+subtly elevated cards, aligned label/value rows, and a full-width underlined
+section strip. Identity, catalogs, and description sit together; installer and
+requirements occupy the second column when space allows.
+
+The cardboard-brown accent follows MunkiStudio's `Brand.swift`; selected rows use
+a deeper shade for readable white text. The source app's gray navigation selection
+is preserved separately from the package selection. Light and dark palettes adapt
+surface, border, and field colors. Browser focus indicators and the explicit draft
+review remain. The section strip illustrates the native editor's planned panels;
+only Overview is implemented in the study.
+
+Eight invented records make grouping and list density reviewable. Category, type,
+and directory controls regroup the list; search and draft review still work.
+CSS and JavaScript live alongside the HTML, with no external asset dependency.
+
 ## Information architecture
 
 | Navigation | Primary work | Later expansion |
