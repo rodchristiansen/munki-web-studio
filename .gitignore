@@ -1,0 +1,17 @@
+/.worktrees/
+.DS_Store
+.env
+.env.*
+!.env.example
+node_modules/
+.venv/
+__pycache__/
+dist/
+coverage/
+*.tfstate
+*.tfstate.*
+.terraform/
+*.tfplan
+data/
+repos/
+uploads/
