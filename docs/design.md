@@ -29,12 +29,16 @@ The cardboard-brown accent follows MunkiStudio's `Brand.swift`; selected rows us
 a deeper shade for readable white text. The source app's gray navigation selection
 is preserved separately from the package selection. Light and dark palettes adapt
 surface, border, and field colors. Browser focus indicators and the explicit draft
-review remain. The section strip illustrates the native editor's planned panels;
-only Overview is implemented in the study.
+review remain. The editor tabs switch between Overview and read-only sample Detection, Install,
+Uninstall, and Advanced panels. Arrow keys, Home, and End move between tabs;
+Overview retains the editable draft fields.
 
 Eight invented records make grouping and list density reviewable. Category, type,
 and directory controls regroup the list; search and draft review still work.
-CSS and JavaScript live alongside the HTML, with no external asset dependency.
+CSS, JavaScript, and the app icon live alongside the HTML, with no external asset
+dependency. The package-list column stretches through the workspace to the status
+footer even when the selected editor panel is short. The top-left header uses
+MunkiStudio's actual app icon.
 
 ## Information architecture
 

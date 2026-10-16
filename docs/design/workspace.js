@@ -47,7 +47,7 @@ function renderList() {
   });
   if(!groups.size){const p=document.createElement('p');p.className='empty-search';p.textContent='No matching packages';el('package-list').append(p)}
 }
-function renderEditor(){const r=records[selected];el('package-name').textContent=r.name;el('record-name').value=r.name;el('installer-type').value=r.type==='Package'?'pkg':'copy_from_dmg';el('installer-location').value=r.directory+'/'+r.name+'-'+r.version+(r.type==='Package'?'.pkg':'.dmg');el('package-path').textContent=path(r);el('display-name').value=r.displayName??r.name;el('description').value=r.description;el('version').value=r.version;el('category').value=r.category;el('minimum-os').value=r.min;el('testing').checked=r.testing;el('production').checked=r.production}
+function renderEditor(){const r=records[selected];el('package-name').textContent=r.name;el('record-name').value=r.name;el('installer-type').value=r.type==='Package'?'pkg':'copy_from_dmg';el('installer-location').value=r.directory+'/'+r.name+'-'+r.version+(r.type==='Package'?'.pkg':'.dmg');el('package-path').textContent=path(r);el('display-name').value=r.displayName??r.name;el('description').value=r.description;el('version').value=r.version;el('category').value=r.category;el('minimum-os').value=r.min;el('testing').checked=r.testing;el('production').checked=r.production;renderSamplePanels(r)}
 function capture(){const r=records[selected];r.displayName=el('display-name').value;r.description=el('description').value;r.testing=el('testing').checked;r.production=el('production').checked;updateStatus()}
 ['display-name','description','testing','production'].forEach(id=>el(id).addEventListener('input',capture));
 el('search').addEventListener('input',renderList);
@@ -71,3 +71,56 @@ document.querySelectorAll('.editor-section').forEach(section=>{
   section.append(card);
 });
 renderList();renderEditor();updateStatus();
+
+function renderSamplePanels(record) {
+  const application=record.type!=='Package';
+  const section=(panel,title,rows)=>{
+    const section=document.createElement('section');section.className='editor-section';
+    const heading=document.createElement('h3');heading.textContent=title;
+    const card=document.createElement('div');card.className='card-fields';
+    rows.forEach(([label,value])=>{
+      const dl=document.createElement('dl');dl.className='sample-value';
+      const dt=document.createElement('dt');dt.textContent=label;
+      const dd=document.createElement('dd');dd.textContent=value;dl.append(dt,dd);card.append(dl);
+    });
+    section.append(heading,card);panel.append(section);
+  };
+  for(const name of ['detection','install','uninstall','advanced']){
+    const panel=el('panel-'+name);panel.replaceChildren();
+    const note=document.createElement('p');note.className='sample-note';
+    note.textContent='Read-only sample metadata for '+record.name+'. No commands or scripts are executed.';panel.append(note);
+  }
+  section(el('panel-detection'),'Install detection',application?[
+    ['Method','Application bundle'],['Path','/Applications/'+record.name+'.app'],['Version',record.version]
+  ]:[['Method','Package receipt'],['Package ID','org.example.'+record.name.toLowerCase()],['Version',record.version]]);
+  section(el('panel-detection'),'Check scripts',[['Install check','Not configured'],['Version script','Not configured']]);
+  section(el('panel-install'),'Installer',[
+    ['Type',application?'copy_from_dmg':'pkg'],['Location',record.directory+'/'+record.name+'-'+record.version+(application?'.dmg':'.pkg')],['Destination',application?'/Applications':'Defined by installer']
+  ]);
+  section(el('panel-install'),'Installation behavior',[['Unattended install','Not specified'],['Blocking application',application?record.name+'.app':'None specified'],['Preinstall script','Not configured'],['Postinstall script','Not configured']]);
+  section(el('panel-uninstall'),'Removal',[
+    ['Uninstallable',application?'Yes':'Not specified'],['Method',application?'remove_copied_items':'Not configured'],['Target',application?'/Applications/'+record.name+'.app':'None specified']
+  ]);
+  section(el('panel-uninstall'),'Removal scripts',[['Preuninstall script','Not configured'],['Postuninstall script','Not configured']]);
+  section(el('panel-advanced'),'Compatibility',[['Minimum macOS',record.min],['Architectures','arm64, x86_64'],['Restart action','Not specified'],['On demand','Not specified']]);
+  section(el('panel-advanced'),'File',[['Relative path',path(record)],['Format','XML property list'],['Source','Invented sample record']]);
+}
+const editorTabs=[...document.querySelectorAll('[role="tab"]')];
+function activateTab(tab,focus=false){
+  editorTabs.forEach(button=>{
+    const selected=button===tab;button.setAttribute('aria-selected',String(selected));button.tabIndex=selected?0:-1;
+    el(button.getAttribute('aria-controls')).hidden=!selected;
+  });
+  if(focus)tab.focus();
+}
+editorTabs.forEach((tab,index)=>{
+  tab.addEventListener('click',()=>activateTab(tab));
+  tab.addEventListener('keydown',event=>{
+    let next;
+    if(event.key==='ArrowRight')next=(index+1)%editorTabs.length;
+    if(event.key==='ArrowLeft')next=(index-1+editorTabs.length)%editorTabs.length;
+    if(event.key==='Home')next=0;
+    if(event.key==='End')next=editorTabs.length-1;
+    if(next!==undefined){event.preventDefault();activateTab(editorTabs[next],true)}
+  });
+});
