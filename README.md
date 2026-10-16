@@ -19,7 +19,8 @@ remain authoritative. Contributions to upstream MWA2 continue separately.
 - [Interactive workspace study](docs/design/workspace.html)
 
 The workspace study uses invented sample data and runs locally without a build
-step. Download/open the HTML file in a browser, or serve the repository locally.
+step. Open the HTML file with its adjacent CSS and JavaScript files, or serve the
+repository locally.
 GitHub's file viewer displays its source.
 
 To serve the design study locally, run this from the repository root:
