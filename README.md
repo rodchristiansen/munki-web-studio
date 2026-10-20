@@ -7,6 +7,11 @@ Browse packages, edit manifests and metadata, understand dependencies, review
 changes, and publish through an explicit workflow. Existing repository files
 remain authoritative. Contributions to upstream MWA2 continue separately.
 
+Munki Web Studio is built on
+[FleetMate Web Admin](https://github.com/rodchristiansen/fleetmate-web-admin),
+the core it shares with
+[Cimian Web Studio](https://github.com/windowsadmins/cimian-web-studio).
+
 **Status: planning and design exploration. There is no application backend yet.**
 
 ## Start here
