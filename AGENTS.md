@@ -24,6 +24,15 @@ without explicit authorization. Preserve unknown metadata, value types, file
 formats, relative paths, and meaningful ordering. Do not silently convert
 formats or make Git mandatory. Catalogs are derived outputs.
 
+## Shared core
+
+Munki Web Studio is built on `rodchristiansen/fleetmate-web-admin`, which owns
+the workspace UI, change sets, jobs, identity, and audit. This repository owns
+the Munki adapter (plist and YAML layout, schema, references, `NSPredicate`
+conditions) and the Mac worker. Shared behavior changes go into the core, never
+a local copy. Cimian Web Studio (`windowsadmins/cimian-web-studio`) is the
+sibling studio on the same core.
+
 ## Infrastructure
 
 All deployable configuration belongs in versioned IaC and the reviewed deployment
