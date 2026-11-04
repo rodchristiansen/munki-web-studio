@@ -48,7 +48,7 @@ Create directories only as implementation reaches them.
 
 ## Stack comparison
 
-The 2026-10-20 codec test led to a Python recommendation; see
+The 2026-10-20 codec test led to Python, decided 2026-11-04; see
 [backend](backend.md). The comparison below predates it.
 
 React, TypeScript, and Vite are the proposed browser stack: a rich workspace

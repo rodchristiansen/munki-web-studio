@@ -1,11 +1,12 @@
 # Backend language
 
-Status: recommendation, not yet accepted · 2026-11-04. This page is kept identical
+Status: decided 2026-11-04. This page is kept identical
 in Munki Web Studio and Cimian Web Studio.
 
-## Recommendation
+## Decision
 
-Python, for both studios. TypeScript is the alternative. .NET is not recommended.
+Python, for both studios. TypeScript was the alternative; .NET was not
+recommended. The web framework (FastAPI or Django) is still open.
 
 ## What decides it
 
