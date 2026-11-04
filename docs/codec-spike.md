@@ -41,5 +41,4 @@ language.
   Cimian's code, did not hold: that writer reorders keys, drops comments and
   unknown keys, and unquotes `"2.10"`.
 
-Recommendation: Python, with TypeScript as the alternative if one language
-across the stack matters more than adapter size. Not decided until accepted.
+Decided 2026-11-04: Python for both studios. See [backend](backend.md).
