@@ -41,6 +41,7 @@ implements it on its own; there is no shared library to import.
 | ------------- | ----------------------------------------------------------------------------------------- |
 | Manifest      | Name, version, contract version, platform, brand theme, icon                              |
 | API           | A router the host mounts under a prefix, for example `/munki`                             |
+| MCP | Its FastMCP server, which the host mounts under a tool prefix such as `munki_` |
 | UI            | A workspace module the host mounts under the same prefix                                  |
 | Identity hook | Accepts an already authenticated user and roles from the host, instead of its own sign-in |
 | Settings      | Its repository and worker configuration, readable and validated by the host               |

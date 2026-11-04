@@ -103,13 +103,13 @@ duplicate publication. Test on a disposable repo and a real Munki test client.
 | --- | --- | --- |
 | Initial deployment | Self-hosted, existing filesystem repo | A hosted-first product goal |
 | Frontend | React + TypeScript + Vite | Preference for another maintained UI stack |
-| Backend | Python, decided 2026-11-04 ([backend](backend.md)); framework open | — |
+| Backend | Python with FastAPI, decided 2026-11-04 ([backend](backend.md)) | — |
 | Runtime topology | One writer per repo; optional worker process | Proven need for multiple writers/instances |
 | State | SQLite on local durable disk for a single-host pilot | Shared control plane needs PostgreSQL |
 | Mac jobs | Optional Mac worker; unavailable capabilities explicit | Requirement for imports in the first release |
 | Git model | Optional repository integration | Team requires PR-only metadata changes |
 | Identity | OIDC, exact provider still open | Existing self-hosted identity requirements |
-| License/visibility | Private exploration; license undecided | Decision to publish and accept outside contributions |
+| License/visibility | MIT, public, decided 2026-11-04 | — |
 
 ## Next implementation slice
 

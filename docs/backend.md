@@ -5,8 +5,13 @@ in Munki Web Studio and Cimian Web Studio.
 
 ## Decision
 
-Python, for both studios. TypeScript was the alternative; .NET was not
-recommended. The web framework (FastAPI or Django) is still open.
+Python with FastAPI, for both studios. TypeScript was the alternative; .NET
+was not recommended. FastAPI was chosen over Django on 2026-11-04: the
+studios are API-first with a React workspace, need OpenAPI contracts for the
+browser and for FleetMate, and must mount as routers inside a host app, which
+FastAPI does natively. Sign-in, sessions, and migrations are assembled
+deliberately instead of coming from Django. The same Python package also carries the
+FastMCP server and the Typer command line (see `mcp.md` and `cli.md`).
 
 ## What decides it
 
@@ -55,7 +60,7 @@ makes the editor smallest and the rest of the codec safest?
    kept it as written, along with quoted versions and comments.
 4. **Big numbers just work.** Python integers have no size limit, so file sizes
    and other large values need no special handling on the server.
-5. **The web side is mature.** FastAPI or Django, OpenID Connect sign-in, database
+5. **The web side is mature.** FastAPI, OpenID Connect sign-in, database
    migrations, background jobs, and OpenAPI contracts for the browser are all
    well-trodden.
 6. **It runs the same everywhere.** One container image on Linux, macOS, or a

@@ -45,4 +45,4 @@ Studio.
 All deployable configuration belongs in versioned IaC and the reviewed deployment
 path. Planning does not authorize cloud provisioning or identity changes.
 Keep application state, repository content, credentials, and package payloads
-out of this source repository. Select a license before public distribution.
+out of this source repository. Licensed MIT (`LICENSE`).
