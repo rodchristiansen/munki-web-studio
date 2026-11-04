@@ -1,0 +1,19 @@
+# Munki YAML pkginfo, invented values.
+name: ExampleCLI
+display_name: Example CLI
+version: "3.0"
+catalogs:
+  - testing
+installer_item_location: tools/ExampleCLI-3.0.pkg
+installer_type: pkg
+receipts:
+  - packageid: com.example.cli
+    version: "3.0"
+minimum_os_version: "13.0"
+unattended_install: true
+installcheck_script: |
+  #!/bin/zsh
+  # exit 0 means install is needed
+  [[ -x /usr/local/bin/example ]] && exit 1
+  exit 0
+x_unknown_site_key: keep-me
