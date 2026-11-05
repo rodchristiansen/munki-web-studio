@@ -1,5 +1,6 @@
 import datetime as dt
 import difflib
+import plistlib
 from pathlib import Path
 
 import pytest
@@ -174,3 +175,36 @@ def test_revision_tracks_bytes() -> None:
     raw = (CODEC / "pkginfo.yaml").read_bytes()
     assert load(raw).revision == load(raw).revision
     assert load(raw).revision != load(raw + b"\n").revision
+
+
+def test_rejects_yaml_aliases_and_alias_bombs() -> None:
+    bomb = b"a: &a [x, x, x, x, x, x, x, x, x]\nb: &b [*a, *a, *a, *a, *a, *a, *a, *a, *a]\n"
+    with pytest.raises(ParseError, match="aliases"):
+        load(bomb)
+
+
+def test_rejects_deep_nesting() -> None:
+    with pytest.raises(ParseError, match="Nesting"):
+        load(b"k: " + b"[" * 200 + b"]" * 200 + b"\n")
+    deep: list[object] = []
+    current = deep
+    for _ in range(200):
+        nxt: list[object] = []
+        current.append(nxt)
+        current = nxt
+    with pytest.raises(ParseError, match="Nesting"):
+        load(plistlib.dumps({"k": deep}, fmt=plistlib.FMT_BINARY))
+
+
+def test_rejects_binary_plist_amplification() -> None:
+    shared = ["x"] * 1000
+    level = [shared] * 1000
+    raw = plistlib.dumps({"k": [level] * 2}, fmt=plistlib.FMT_BINARY)
+    assert len(raw) < 100_000
+    with pytest.raises(ParseError, match="expands"):
+        load(raw)
+
+
+def test_rejects_oversized_files() -> None:
+    with pytest.raises(ParseError, match="larger than"):
+        load(b"#" * (17 * 1024 * 1024))

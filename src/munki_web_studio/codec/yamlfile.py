@@ -17,6 +17,7 @@ from ruamel.yaml.comments import CommentedMap, CommentedSeq
 from ruamel.yaml.error import MarkedYAMLError, YAMLError
 
 from munki_web_studio.codec.model import (
+    MAX_DEPTH,
     Append,
     Change,
     CodecError,
@@ -35,9 +36,35 @@ def _round_trip() -> YAML:
     return yaml
 
 
+def _reject_aliases_and_depth(text: str) -> None:
+    """Munki and Cimian files never need anchors or aliases; refuse them.
+
+    Aliases let a tiny file expand into an enormous tree, and deep nesting can
+    exhaust the stack, so both are checked on the event stream before loading.
+    """
+    depth = 0
+    for event in YAML().parse(text):
+        name = type(event).__name__
+        mark = event.start_mark
+        if name == "AliasEvent" or getattr(event, "anchor", None):
+            raise ParseError(
+                "YAML anchors and aliases are not supported", mark.line + 1, mark.column + 1
+            )
+        if name in ("MappingStartEvent", "SequenceStartEvent"):
+            depth += 1
+            if depth > MAX_DEPTH:
+                raise ParseError(
+                    f"Nesting deeper than {MAX_DEPTH} levels", mark.line + 1, mark.column + 1
+                )
+        elif name in ("MappingEndEvent", "SequenceEndEvent"):
+            depth -= 1
+
+
 def load_tree(raw: bytes) -> Any:
     try:
-        return _round_trip().load(raw.decode("utf-8"))
+        text = raw.decode("utf-8")
+        _reject_aliases_and_depth(text)
+        return _round_trip().load(text)
     except UnicodeDecodeError as error:
         raise ParseError(f"Not UTF-8 text: {error.reason}") from error
     except MarkedYAMLError as error:

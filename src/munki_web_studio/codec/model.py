@@ -7,7 +7,7 @@ import datetime as dt
 import hashlib
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any
+from typing import Any, cast
 
 type Key = str | int
 type Path = tuple[Key, ...]
@@ -79,6 +79,37 @@ class EditResult:
 
     raw: bytes
     surgical: bool
+
+
+# Limits that keep a hostile file from exhausting memory or the stack. Real
+# Munki and Cimian files are far below all three.
+MAX_FILE_BYTES = 16 * 1024 * 1024
+MAX_DEPTH = 64
+MAX_NODES = 1_000_000
+
+
+def check_bounds(data: Any) -> None:
+    """Reject data that is too deep, too large, or contains a cycle.
+
+    Shared references are counted every time they are reached, so a small file
+    that expands into a huge tree is rejected too.
+    """
+    nodes = 0
+    stack: list[tuple[Any, int]] = [(data, 0)]
+    while stack:
+        value, depth = stack.pop()
+        nodes += 1
+        if nodes > MAX_NODES:
+            raise ParseError(f"File expands to more than {MAX_NODES} values")
+        if depth > MAX_DEPTH:
+            raise ParseError(f"Nesting deeper than {MAX_DEPTH} levels")
+        if isinstance(value, dict):
+            children = cast(dict[Any, Any], value).values()
+        elif isinstance(value, list):
+            children = cast(list[Any], value)
+        else:
+            continue
+        stack.extend((child, depth + 1) for child in children)
 
 
 def revision_of(raw: bytes) -> str:
