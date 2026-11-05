@@ -44,6 +44,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/fields": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Editable Fields
+         * @description The pkginfo fields the editor can set, and the type each takes.
+         */
+        get: operations["editable_fields_api_fields_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -178,6 +198,28 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/repositories/{repo_id}/changesets/{change_id}/pkginfo/{path}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Edit Pkginfo Fields
+         * @description Edit named pkginfo fields in a draft. Values are checked against the field's
+         *     type, unchanged values are ignored, and earlier edits to the same fields are
+         *     replaced.
+         */
+        patch: operations["edit_pkginfo_fields_api_repositories__repo_id__changesets__change_id__pkginfo__path__patch"];
         trace?: never;
     };
     "/api/repositories/{repo_id}/conditions/{path}": {
@@ -503,6 +545,21 @@ export interface components {
             line?: number | null;
             /** Message */
             message: string;
+        };
+        /** FieldEdit */
+        FieldEdit: {
+            /**
+             * Base Revision
+             * @description Revision of the pkginfo the edits were made on
+             */
+            base_revision: string;
+            /**
+             * Fields
+             * @description Field values as tagged JSON; null removes a field. GET /api/fields lists them.
+             */
+            fields: {
+                [key: string]: unknown;
+            };
         };
         /** FileDraftInfo */
         FileDraftInfo: {
@@ -905,6 +962,28 @@ export interface operations {
             };
         };
     };
+    editable_fields_api_fields_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+        };
+    };
     health_api_health_get: {
         parameters: {
             query?: never;
@@ -1155,6 +1234,43 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["FileEdit"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangeSetInfo"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    edit_pkginfo_fields_api_repositories__repo_id__changesets__change_id__pkginfo__path__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                repo_id: string;
+                change_id: string;
+                path: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FieldEdit"];
             };
         };
         responses: {

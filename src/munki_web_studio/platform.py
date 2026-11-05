@@ -27,6 +27,36 @@ DEPENDENCY_KEYS = ("requires", "update_for")
 PAYLOAD_FOLDER = "pkgs"
 
 
+# pkginfo fields the editor may set, and the type each must have. Dotted names
+# reach into nested dictionaries. Anything else is edited through raw changes.
+PKGINFO_FIELDS: dict[str, str] = {
+    "name": "string",
+    "display_name": "string",
+    "version": "string",
+    "description": "text",
+    "category": "string",
+    "developer": "string",
+    "catalogs": "string-list",
+    "minimum_os_version": "string",
+    "maximum_os_version": "string",
+    "supported_architectures": "string-list",
+    "unattended_install": "boolean",
+    "unattended_uninstall": "boolean",
+    "uninstallable": "boolean",
+    "restart_action": "string",
+    "blocking_applications": "string-list",
+    "requires": "string-list",
+    "update_for": "string-list",
+    "installcheck_script": "text",
+    "uninstallcheck_script": "text",
+    "preinstall_script": "text",
+    "postinstall_script": "text",
+    "preuninstall_script": "text",
+    "postuninstall_script": "text",
+    "uninstall_script": "text",
+}
+
+
 def summarize(kind: str, data: Any) -> dict[str, Any]:
     """The searchable fields of one parsed file, plus what it refers to."""
     if kind == "catalog":
