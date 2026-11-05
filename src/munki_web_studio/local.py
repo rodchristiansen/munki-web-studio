@@ -16,14 +16,15 @@ from typing import Annotated, Any, cast
 
 import typer
 
-from munki_web_studio import platform, tagged
+from munki_web_studio import platform, remote, tagged
 from munki_web_studio.codec import ParseError, load
 from munki_web_studio.codec.model import MAX_FILE_BYTES
 from munki_web_studio.repository.config import Repository
 from munki_web_studio.repository.index import Index, IndexedObject
 from munki_web_studio.repository.paths import PathEscapeError, normalize, read_contained
-from munki_web_studio.repository.references import graph_for, validate
+from munki_web_studio.repository.references import Issue, Reference, graph_for, validate
 from munki_web_studio.repository.scanner import scan
+from munki_web_studio.studio import STUDIO
 
 RepoOption = Annotated[
     Path, typer.Option("--repo", "-r", help="Repository folder.", file_okay=False, exists=True)
@@ -32,6 +33,18 @@ IndexOption = Annotated[
     Path | None, typer.Option("--index", help="Keep the scan index in this file between runs.")
 ]
 JsonOption = Annotated[bool, typer.Option("--json", help="Print tagged JSON instead of text.")]
+UrlOption = Annotated[
+    str | None,
+    typer.Option(
+        "--url",
+        envvar=f"{STUDIO.command.upper()}_URL",
+        help="Ask a running studio instead of reading a folder. Sign in first with login.",
+    ),
+]
+RemoteRepoOption = Annotated[
+    str | None,
+    typer.Option("--repository", help="Repository id on the studio; the first if omitted."),
+]
 
 
 @contextmanager
@@ -73,8 +86,29 @@ def search(
     kind: Annotated[str | None, typer.Option(help="pkginfo, manifest, or catalog.")] = None,
     index: IndexOption = None,
     as_json: JsonOption = False,
+    url: UrlOption = None,
+    repository_id: RemoteRepoOption = None,
 ) -> None:
     """Find pkginfo, manifests, and catalogs."""
+    if url:
+        repo_id = remote.first_repository(url, repository_id)
+        rows: list[dict[str, Any]] = []
+        offset = 0
+        while True:
+            page = remote.get(
+                url,
+                f"/api/repositories/{repo_id}/objects",
+                q=query,
+                kind=kind,
+                limit=500,
+                offset=offset,
+            )
+            rows += page["items"]
+            offset += 500
+            if offset >= page["total"]:
+                break
+        _print_search(rows, as_json)
+        return
     with opened(repo, index) as (repository, idx):
         needle = query.lower()
         found = [
@@ -85,13 +119,22 @@ def search(
                 v for v in (o.path, o.name, o.display_name, o.version, o.category) if v
             ).lower()
         ]
+    _print_search([_row(o) for o in found], as_json)
+
+
+def _print_search(rows: list[dict[str, Any]], as_json: bool) -> None:
     if as_json:
-        _emit([_row(o) for o in found])
+        _emit(
+            [
+                {k: r.get(k) for k in ("path", "kind", "status", "name", "version", "catalogs")}
+                for r in rows
+            ]
+        )
         return
-    for o in found:
-        label = " ".join(v for v in (o.name, o.version) if v) or "(unreadable)"
-        typer.echo(f"{o.path}\t{label}")
-    if not found:
+    for r in rows:
+        label = " ".join(v for v in (r.get("name"), r.get("version")) if v) or "(unreadable)"
+        typer.echo(f"{r['path']}\t{label}")
+    if not rows:
         typer.echo("No matches", err=True)
 
 
@@ -142,10 +185,17 @@ def where_used(
     repo: RepoOption = Path("."),
     index: IndexOption = None,
     as_json: JsonOption = False,
+    url: UrlOption = None,
+    repository_id: RemoteRepoOption = None,
 ) -> None:
     """List the manifests and packages that refer to a name."""
-    with opened(repo, index) as (repository, idx):
-        refs = graph_for(idx, repository).where_used(name)
+    if url:
+        repo_id = remote.first_repository(url, repository_id)
+        found = remote.get(url, f"/api/repositories/{repo_id}/where-used/{name}")
+        refs = [Reference(r["source"], r["field"], r["target"], r["condition"]) for r in found]
+    else:
+        with opened(repo, index) as (repository, idx):
+            refs = graph_for(idx, repository).where_used(name)
     if as_json:
         _emit([vars(r) for r in refs])
         return
@@ -161,10 +211,17 @@ def validate_command(
     index: IndexOption = None,
     as_json: JsonOption = False,
     strict: Annotated[bool, typer.Option("--strict", help="Fail on warnings too.")] = False,
+    url: UrlOption = None,
+    repository_id: RemoteRepoOption = None,
 ) -> None:
     """Check the repository. Exits 1 when there are errors, so CI can run it."""
-    with opened(repo, index) as (repository, idx):
-        issues = validate(idx, repository)
+    if url:
+        repo_id = remote.first_repository(url, repository_id)
+        report = remote.get(url, f"/api/repositories/{repo_id}/validation")
+        issues = [Issue(**i) for i in report["issues"]]
+    else:
+        with opened(repo, index) as (repository, idx):
+            issues = validate(idx, repository)
     errors = [i for i in issues if i.severity == "error"]
     if as_json:
         _emit(
@@ -182,7 +239,43 @@ def validate_command(
         raise typer.Exit(1)
 
 
+def login_command(
+    url: Annotated[
+        str,
+        typer.Option(
+            "--url", envvar=f"{STUDIO.command.upper()}_URL", help="The studio to sign in to."
+        ),
+    ],
+) -> None:
+    """Sign in to a running studio from this terminal."""
+    remote.login(url)
+
+
+def logout_command(
+    url: Annotated[str, typer.Option("--url", envvar=f"{STUDIO.command.upper()}_URL")],
+) -> None:
+    """Sign out of a studio and forget its token."""
+    with remote.api(url) as client:
+        client.post("/auth/logout")
+    remote.forget(url)
+    typer.echo(f"Signed out of {url}")
+
+
+def token_command(
+    url: Annotated[str, typer.Option("--url", envvar=f"{STUDIO.command.upper()}_URL")],
+) -> None:
+    """Print the stored bearer token, for an MCP client's configuration."""
+    token = remote.stored_token(url)
+    if not token:
+        typer.echo(f"Not signed in to {url}", err=True)
+        raise typer.Exit(2)
+    typer.echo(token)
+
+
 def register(cli: typer.Typer) -> None:
+    cli.command("login")(login_command)
+    cli.command("logout")(logout_command)
+    cli.command("token")(token_command)
     cli.command()(search)
     cli.command()(show)
     cli.command("where-used")(where_used)

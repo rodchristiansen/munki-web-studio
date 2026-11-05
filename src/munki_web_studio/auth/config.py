@@ -32,6 +32,7 @@ class AuthSettings:
     issuer: str = ""
     client_id: str = ""
     client_secret_env: str = ""
+    cli_client_id: str = ""
     public_url: str = ""
     scopes: tuple[str, ...] = ("openid", "profile", "email")
     role_claim: str = "roles"
@@ -42,6 +43,11 @@ class AuthSettings:
     @property
     def enabled(self) -> bool:
         return self.mode == "oidc"
+
+    @property
+    def audiences(self) -> list[str]:
+        """ID tokens for the browser app or the command line's client are accepted."""
+        return [a for a in (self.client_id, self.cli_client_id) if a]
 
     def role_for(self, values: list[str]) -> Role | None:
         """The highest role any of a person's claim values maps to."""
@@ -88,6 +94,7 @@ def parse_auth(raw: Any) -> AuthSettings:
         issuer=str(table["issuer"]).rstrip("/"),
         client_id=str(table["client_id"]),
         client_secret_env=str(table.get("client_secret_env", "")),
+        cli_client_id=str(table.get("cli_client_id", "")),
         public_url=public_url,
         scopes=tuple(table.get("scopes", ("openid", "profile", "email"))),
         role_claim=str(table.get("role_claim", "roles")),

@@ -53,11 +53,18 @@ def _auth(request: Request) -> AuthState:
     return request.app.state.auth
 
 
+def bearer_token(request: Request) -> str | None:
+    header = request.headers.get("authorization", "")
+    scheme, _, token = header.partition(" ")
+    return token.strip() or None if scheme.lower() == "bearer" else None
+
+
 def current_session(request: Request) -> Session | None:
+    """The browser's cookie session, or the session a bearer token names."""
     auth = _auth(request)
     if not auth.settings.enabled:
         return Session(LOCAL_USER, auth.local_csrf)
-    token = request.cookies.get(COOKIE)
+    token = bearer_token(request) or request.cookies.get(COOKIE)
     return auth.store.get(token) if token else None
 
 
@@ -71,7 +78,9 @@ def require(role: Role) -> Callable[[Request], Session]:
             raise HTTPException(401, "Sign in required", headers={"X-Sign-In": "/auth/login"})
         if session.user.role < role:
             raise HTTPException(403, f"This needs the {role.label} role")
-        if request.method not in SAFE_METHODS:
+        # A bearer token is never sent by a browser on its own, so it needs no CSRF token.
+        uses_bearer = bearer_token(request) is not None and _auth(request).settings.enabled
+        if request.method not in SAFE_METHODS and not uses_bearer:
             sent = request.headers.get(CSRF_HEADER, "")
             if not sent or not secrets.compare_digest(sent, session.csrf):
                 raise HTTPException(403, "Missing or wrong CSRF token")
@@ -189,7 +198,7 @@ def callback(request: Request, code: str = "", state: str = "", error: str = "")
 @router.post("/auth/logout", include_in_schema=False)
 def logout(request: Request, session: Session = Depends(require(Role.VIEWER))) -> Response:  # noqa: B008
     del session
-    token = request.cookies.get(COOKIE)
+    token = bearer_token(request) or request.cookies.get(COOKIE)
     if token:
         _auth(request).store.delete(token)
     response = Response(status_code=204)
@@ -199,3 +208,88 @@ def logout(request: Request, session: Session = Depends(require(Role.VIEWER))) -
 
 def sign_in_redirect(path: str) -> str:
     return f"/auth/login?next={quote(path, safe='/')}"
+
+
+class AuthConfig(BaseModel):
+    sign_in: str
+    issuer: str | None = None
+    client_id: str | None = None
+    scopes: list[str] = []
+    device_authorization_endpoint: str | None = None
+    token_endpoint: str | None = None
+
+
+class TokenRequest(BaseModel):
+    id_token: str
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "Bearer"  # noqa: S105 - the OAuth token type, not a secret
+    expires_in: int
+    name: str
+    role: str
+
+
+@router.get("/api/auth/config")
+def auth_config(request: Request) -> AuthConfig:
+    """What a command line or MCP client needs to sign in to this studio."""
+    auth = _auth(request)
+    if not auth.settings.enabled or auth.client is None:
+        return AuthConfig(sign_in="none")
+    metadata = auth.client.metadata()
+    return AuthConfig(
+        sign_in="oidc",
+        issuer=auth.settings.issuer,
+        client_id=auth.settings.cli_client_id or auth.settings.client_id,
+        scopes=list(auth.settings.scopes),
+        device_authorization_endpoint=metadata.get("device_authorization_endpoint"),
+        token_endpoint=metadata.get("token_endpoint"),
+    )
+
+
+@router.post("/auth/token")
+def issue_token(request: Request, body: TokenRequest) -> TokenResponse:
+    """Trade a provider ID token (from device sign-in) for a studio bearer token."""
+    auth = _auth(request)
+    if not auth.settings.enabled or auth.client is None:
+        raise HTTPException(404, "Sign-in is off; no token is needed")
+    log = request.app.state.audit
+    try:
+        claims = auth.client.verify(body.id_token, None)
+    except SignInError as failure:
+        log.record(
+            actor="anonymous",
+            actor_name="Not signed in",
+            interface="cli",
+            action="token",
+            outcome="refused",
+            detail={"reason": str(failure)},
+        )
+        raise HTTPException(401, str(failure)) from failure
+    role = auth.settings.role_for(claims.values)
+    if role is None:
+        log.record(
+            actor=claims.subject,
+            actor_name=claims.name,
+            interface="cli",
+            action="token",
+            outcome="refused",
+            detail={"reason": "no role"},
+        )
+        raise HTTPException(403, "Your account has no role in this studio; ask an administrator")
+    user = User(claims.subject, claims.name, claims.email, role)
+    token, _ = auth.store.create(user, auth.settings.session_hours)
+    log.record(
+        actor=claims.subject,
+        actor_name=claims.name,
+        interface="cli",
+        action="token",
+        detail={"role": role.label},
+    )
+    return TokenResponse(
+        access_token=token,
+        expires_in=int(auth.settings.session_hours * 3600),
+        name=claims.name,
+        role=role.label,
+    )

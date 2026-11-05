@@ -24,6 +24,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Auth Config
+         * @description What a command line or MCP client needs to sign in to this studio.
+         */
+        get: operations["auth_config_api_auth_config_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -292,6 +312,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Issue Token
+         * @description Trade a provider ID token (from device sign-in) for a studio bearer token.
+         */
+        post: operations["issue_token_auth_token_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -320,6 +360,24 @@ export interface components {
             repo_id: string | null;
             /** Target */
             target: string | null;
+        };
+        /** AuthConfig */
+        AuthConfig: {
+            /** Client Id */
+            client_id?: string | null;
+            /** Device Authorization Endpoint */
+            device_authorization_endpoint?: string | null;
+            /** Issuer */
+            issuer?: string | null;
+            /**
+             * Scopes
+             * @default []
+             */
+            scopes: string[];
+            /** Sign In */
+            sign_in: string;
+            /** Token Endpoint */
+            token_endpoint?: string | null;
         };
         /** CatalogSummary */
         CatalogSummary: {
@@ -598,6 +656,27 @@ export interface components {
             /** Sign In */
             sign_in: string;
         };
+        /** TokenRequest */
+        TokenRequest: {
+            /** Id Token */
+            id_token: string;
+        };
+        /** TokenResponse */
+        TokenResponse: {
+            /** Access Token */
+            access_token: string;
+            /** Expires In */
+            expires_in: number;
+            /** Name */
+            name: string;
+            /** Role */
+            role: string;
+            /**
+             * Token Type
+             * @default Bearer
+             */
+            token_type: string;
+        };
         /** ValidationError */
         ValidationError: {
             /** Context */
@@ -675,6 +754,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    auth_config_api_auth_config_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthConfig"];
                 };
             };
         };
@@ -1097,6 +1196,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SessionInfo"];
+                };
+            };
+        };
+    };
+    issue_token_auth_token_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TokenRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TokenResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

@@ -82,6 +82,10 @@ class OIDCClient:
         }
         return f"{self.metadata()['authorization_endpoint']}?{urlencode(params)}"
 
+    def device_endpoint(self) -> str | None:
+        endpoint = self.metadata().get("device_authorization_endpoint")
+        return str(endpoint) if endpoint else None
+
     def exchange(self, code: str, verifier: str, nonce: str) -> Claims:
         form = {
             "grant_type": "authorization_code",
@@ -100,7 +104,8 @@ class OIDCClient:
             raise SignInError("The provider returned no ID token")
         return self.verify(id_token, nonce)
 
-    def verify(self, id_token: str, nonce: str) -> Claims:
+    def verify(self, id_token: str, nonce: str | None) -> Claims:
+        """Check signature, issuer, audience and expiry; the nonce too when one was sent."""
         try:
             try:
                 token = jwt.decode(id_token, self.keys(), algorithms=["RS256", "ES256", "PS256"])
@@ -108,13 +113,15 @@ class OIDCClient:
                 token = jwt.decode(
                     id_token, self.keys(refresh=True), algorithms=["RS256", "ES256", "PS256"]
                 )
-            registry = jwt.JWTClaimsRegistry(
-                iss={"essential": True, "value": self.settings.issuer},
-                aud={"essential": True, "value": self.settings.client_id},
-                sub={"essential": True},
-                exp={"essential": True},
-                nonce={"essential": True, "value": nonce},
-            )
+            checks: dict[str, Any] = {
+                "iss": {"essential": True, "value": self.settings.issuer},
+                "aud": {"essential": True, "values": self.settings.audiences},
+                "sub": {"essential": True},
+                "exp": {"essential": True},
+            }
+            if nonce is not None:
+                checks["nonce"] = {"essential": True, "value": nonce}
+            registry = jwt.JWTClaimsRegistry(**checks)
             registry.validate(token.claims)
         except JoseError as error:
             raise SignInError(f"The ID token is not valid: {error}") from error

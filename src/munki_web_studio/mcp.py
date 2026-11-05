@@ -7,6 +7,7 @@ what the browser shows. Results are bounded; nothing here writes.
 from typing import Annotated, Any
 
 from fastmcp import FastMCP
+from fastmcp.server.auth import TokenVerifier
 from pydantic import Field
 
 from munki_web_studio import conditions, platform, tagged
@@ -38,9 +39,10 @@ def _summary(obj: IndexedObject) -> dict[str, Any]:
     }
 
 
-def create_mcp(services: Services | None = None) -> FastMCP:
+def create_mcp(services: Services | None = None, auth: TokenVerifier | None = None) -> FastMCP:
     mcp = FastMCP(
         name=STUDIO.name,
+        auth=auth,
         instructions=(
             f"Read-only tools for a {STUDIO.platform} repository. Paths are relative to the "
             "repository root and are the identity of every file. Values that JSON cannot "

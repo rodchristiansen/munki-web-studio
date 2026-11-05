@@ -74,6 +74,71 @@
         "title": "AuditEntryInfo",
         "type": "object"
       },
+      "AuthConfig": {
+        "properties": {
+          "client_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Id"
+          },
+          "device_authorization_endpoint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Device Authorization Endpoint"
+          },
+          "issuer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issuer"
+          },
+          "scopes": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Scopes",
+            "type": "array"
+          },
+          "sign_in": {
+            "title": "Sign In",
+            "type": "string"
+          },
+          "token_endpoint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Token Endpoint"
+          }
+        },
+        "required": [
+          "sign_in"
+        ],
+        "title": "AuthConfig",
+        "type": "object"
+      },
       "CatalogSummary": {
         "properties": {
           "items": {
@@ -946,6 +1011,52 @@
         "title": "SessionInfo",
         "type": "object"
       },
+      "TokenRequest": {
+        "properties": {
+          "id_token": {
+            "title": "Id Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id_token"
+        ],
+        "title": "TokenRequest",
+        "type": "object"
+      },
+      "TokenResponse": {
+        "properties": {
+          "access_token": {
+            "title": "Access Token",
+            "type": "string"
+          },
+          "expires_in": {
+            "title": "Expires In",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "token_type": {
+            "default": "Bearer",
+            "title": "Token Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "access_token",
+          "expires_in",
+          "name",
+          "role"
+        ],
+        "title": "TokenResponse",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -1135,6 +1246,28 @@
         "summary": "Read Audit",
         "tags": [
           "audit"
+        ]
+      }
+    },
+    "/api/auth/config": {
+      "get": {
+        "description": "What a command line or MCP client needs to sign in to this studio.",
+        "operationId": "auth_config_api_auth_config_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthConfig"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Auth Config",
+        "tags": [
+          "auth"
         ]
       }
     },
@@ -1900,6 +2033,48 @@
           }
         },
         "summary": "Get Session",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/token": {
+      "post": {
+        "description": "Trade a provider ID token (from device sign-in) for a studio bearer token.",
+        "operationId": "issue_token_auth_token_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Issue Token",
         "tags": [
           "auth"
         ]
