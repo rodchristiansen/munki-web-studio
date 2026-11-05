@@ -794,6 +794,14 @@
       },
       "ScanSummary": {
         "properties": {
+          "changed": {
+            "description": "Paths read or removed by this scan",
+            "items": {
+              "type": "string"
+            },
+            "title": "Changed",
+            "type": "array"
+          },
           "files": {
             "title": "Files",
             "type": "integer"
@@ -801,6 +809,16 @@
           "finished_at": {
             "title": "Finished At",
             "type": "string"
+          },
+          "read": {
+            "default": 0,
+            "title": "Read",
+            "type": "integer"
+          },
+          "removed": {
+            "default": 0,
+            "title": "Removed",
+            "type": "integer"
           },
           "started_at": {
             "title": "Started At",
@@ -1538,6 +1556,49 @@
           }
         },
         "summary": "Get Package",
+        "tags": [
+          "repositories"
+        ]
+      }
+    },
+    "/api/repositories/{repo_id}/rescan": {
+      "post": {
+        "description": "Look for changes made to the repository outside the studio, now.",
+        "operationId": "rescan_api_repositories__repo_id__rescan_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repo_id",
+            "required": true,
+            "schema": {
+              "title": "Repo Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rescan",
         "tags": [
           "repositories"
         ]

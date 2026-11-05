@@ -192,3 +192,5 @@ body { min-height: 100vh; }
 .conditional { margin: 10px 0; }
 .conditional .rule { font-size: 13px; margin-bottom: 6px; }
 .manifest-content.detail { max-width: none; }
+.notice { display: flex; gap: 12px; align-items: center; justify-content: space-between; padding: 8px 16px; font-size: 12px; background: color-mix(in srgb, var(--accent) 14%, var(--surface)); border-bottom: 1px solid var(--line); }
+.rescan { font-size: 11px; margin-top: 4px; }

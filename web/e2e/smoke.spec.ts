@@ -38,3 +38,16 @@ test("reads manifests, follows includes, and shows conditions as rules", async (
   await page.getByRole("button", { name: "ExampleEditor", exact: true }).click();
   await expect(page.getByRole("heading", { level: 2, name: "ExampleEditor" })).toBeVisible();
 });
+
+test("rescan picks up a file changed on disk", async ({ page }) => {
+  const { readFileSync, writeFileSync, utimesSync } = await import("node:fs");
+  const file = new URL("../test-results/repo/manifests/site_default", import.meta.url);
+  await page.goto("/?area=manifests&manifest=manifests%2Fsite_default");
+  await expect(page.getByRole("heading", { level: 2, name: "site_default" })).toBeVisible();
+  writeFileSync(file, readFileSync(file, "utf-8").replace("ExampleRuntime", "ExampleRuntimeZ"));
+  const later = new Date(Date.now() + 60_000);
+  utimesSync(file, later, later);
+  await page.getByRole("button", { name: "Rescan now" }).click();
+  await expect(page.getByText("ExampleRuntimeZ", { exact: true })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole("status").filter({ hasText: "changed on disk" })).toBeVisible();
+});

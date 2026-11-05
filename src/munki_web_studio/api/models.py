@@ -70,6 +70,11 @@ class ScanSummary(BaseModel):
     started_at: str
     finished_at: str
     files: int
+    read: int = 0
+    removed: int = 0
+    changed: list[str] = Field(
+        default_factory=lambda: [], description="Paths read or removed by this scan"
+    )
 
 
 class RepositoryInfo(BaseModel):

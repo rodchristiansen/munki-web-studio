@@ -1,6 +1,6 @@
 """Read-only routes over the index and the repository files."""
 
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, HTTPException, Query, Request
 
@@ -27,6 +27,7 @@ from munki_web_studio.repository.config import Repository, Settings
 from munki_web_studio.repository.index import Index, IndexedObject
 from munki_web_studio.repository.paths import PathEscapeError, normalize, read_contained
 from munki_web_studio.repository.references import graph_for, object_conditions, validate
+from munki_web_studio.repository.scanner import scan
 
 router = APIRouter(prefix="/api/repositories", tags=["repositories"])
 
@@ -77,6 +78,17 @@ def _matches(obj: IndexedObject, q: str | None) -> bool:
     return q.lower() in haystack.lower()
 
 
+def _scan_summary(scan: dict[str, Any]) -> ScanSummary:
+    return ScanSummary(
+        started_at=scan["started_at"],
+        finished_at=scan["finished_at"],
+        files=scan["files"],
+        read=scan["read"],
+        removed=scan["removed"],
+        changed=scan["changed"],
+    )
+
+
 @router.get("")
 def list_repositories(request: Request) -> list[RepositoryInfo]:
     index = _index(request)
@@ -88,13 +100,7 @@ def list_repositories(request: Request) -> list[RepositoryInfo]:
                 id=repo.id,
                 name=repo.name,
                 writable=repo.writable,
-                last_scan=ScanSummary(
-                    started_at=scan["started_at"],
-                    finished_at=scan["finished_at"],
-                    files=scan["files"],
-                )
-                if scan
-                else None,
+                last_scan=_scan_summary(scan) if scan else None,
             )
         )
     return result
@@ -267,3 +273,15 @@ def explain_conditions(request: Request, repo_id: str, path: str) -> list[Condit
         raise HTTPException(404, f"No object at {relative!r}")
     graph = graph_for(_index(request), repo)
     return [ConditionInfo(**vars(conditions.analyze(t))) for t in object_conditions(graph, obj)]
+
+
+@router.post("/{repo_id}/rescan")
+def rescan(request: Request, repo_id: str) -> ScanSummary:
+    """Look for changes made to the repository outside the studio, now."""
+    repo = _repo(request, repo_id)
+    index = _index(request)
+    scan(repo, index)
+    summary = index.last_scan(repo.id)
+    if summary is None:
+        raise HTTPException(500, "The scan did not record a result")
+    return _scan_summary(summary)

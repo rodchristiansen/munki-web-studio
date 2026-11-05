@@ -162,3 +162,50 @@ def test_manifest_view_reports_missing_includes(client: TestClient) -> None:
         ).status_code
         == 404
     )
+
+
+def test_rescan_finds_outside_edits(client: TestClient, tmp_path: Path) -> None:
+    import os
+
+    root = tmp_path / "repo"
+    target = root / "manifests/site_default"
+    before = client.get("/api/repositories/fixture/objects/manifests/site_default").json()[
+        "revision"
+    ]
+    target.write_bytes(target.read_bytes().replace(b"ExampleRuntime", b"ExampleRuntimeX"))
+    os.utime(target, ns=(10**18, 10**18))
+    summary = client.post("/api/repositories/fixture/rescan").json()
+    assert summary["changed"] == ["manifests/site_default"]
+    after = client.get("/api/repositories/fixture/objects/manifests/site_default").json()[
+        "revision"
+    ]
+    assert after != before
+    repos = client.get("/api/repositories").json()
+    assert repos[0]["last_scan"]["changed"] == ["manifests/site_default"]
+
+
+def test_background_watcher_picks_up_changes(tmp_path: Path) -> None:
+    import os
+    import time
+
+    root = tmp_path / "repo"
+    shutil.copytree(REPO, root)
+    settings = Settings(
+        repositories=(Repository(id="fixture", name="Fixture", root=root.resolve()),),
+        state_dir=tmp_path / "state",
+        rescan_seconds=0.2,
+    )
+    with TestClient(
+        create_app(settings, static_dir=tmp_path / "none"), base_url="http://localhost"
+    ) as c:
+        target = root / "manifests/site_default"
+        target.write_bytes(target.read_bytes().replace(b"ExampleRuntime", b"ExampleRuntimeY"))
+        os.utime(target, ns=(10**18 + 5, 10**18 + 5))
+        for _ in range(50):
+            if c.get("/api/repositories").json()[0]["last_scan"]["changed"] == [
+                "manifests/site_default"
+            ]:
+                break
+            time.sleep(0.1)
+        else:
+            raise AssertionError("watcher never rescanned")

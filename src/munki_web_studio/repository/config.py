@@ -35,6 +35,7 @@ class Settings:
     repositories: tuple[Repository, ...]
     state_dir: Path
     allowed_hosts: tuple[str, ...] = LOCAL_HOSTS
+    rescan_seconds: float = 30
 
     def repository(self, repo_id: str) -> Repository:
         for repo in self.repositories:
@@ -89,8 +90,12 @@ def parse_settings(raw: dict[str, Any], base: Path) -> Settings:
     if "*" in hosts:
         raise ConfigError("allowed_hosts cannot be '*'; list the host names instead")
     allowed = tuple(dict.fromkeys([*LOCAL_HOSTS, *cast(list[str], hosts)]))
+    rescan = raw.get("rescan_seconds", 30)
+    if not isinstance(rescan, int | float) or isinstance(rescan, bool) or rescan < 0:
+        raise ConfigError("rescan_seconds must be a number of seconds, or 0 to turn it off")
     return Settings(
         repositories=tuple(repos),
         state_dir=(base / state).resolve(strict=False),
         allowed_hosts=allowed,
+        rescan_seconds=float(rescan),
     )

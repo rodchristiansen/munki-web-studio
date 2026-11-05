@@ -192,6 +192,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/repositories/{repo_id}/rescan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rescan
+         * @description Look for changes made to the repository outside the studio, now.
+         */
+        post: operations["rescan_api_repositories__repo_id__rescan_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/repositories/{repo_id}/validation": {
         parameters: {
             query?: never;
@@ -478,10 +498,25 @@ export interface components {
         };
         /** ScanSummary */
         ScanSummary: {
+            /**
+             * Changed
+             * @description Paths read or removed by this scan
+             */
+            changed?: string[];
             /** Files */
             files: number;
             /** Finished At */
             finished_at: string;
+            /**
+             * Read
+             * @default 0
+             */
+            read: number;
+            /**
+             * Removed
+             * @default 0
+             */
+            removed: number;
             /** Started At */
             started_at: string;
         };
@@ -829,6 +864,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Package"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rescan_api_repositories__repo_id__rescan_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                repo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScanSummary"];
                 };
             };
             /** @description Validation Error */

@@ -1,7 +1,9 @@
-# Config for the browser tests: serves the fixture repository read-only.
+# Config for the browser tests. The test server copies the fixture repository
+# to web/test-results/repo first, so tests can change files without touching it.
 state_dir = "../../web/test-results/state"
+rescan_seconds = 2
 
 [[repositories]]
 id = "fixture"
 name = "Fixture repository"
-path = "repo"
+path = "../../web/test-results/repo"
