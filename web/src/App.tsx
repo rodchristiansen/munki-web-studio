@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, type ObjectDetail, type ObjectSummary, type Package, type RepositoryInfo } from "./api/client";
+import { api, setCsrfToken, type ObjectDetail, type ObjectSummary, type Package, type RepositoryInfo, type SessionInfo } from "./api/client";
 import { Brand } from "./components/Brand";
 import { Icon } from "./components/Icon";
 import { ManifestsWorkspace } from "./components/ManifestsWorkspace";
@@ -46,6 +46,29 @@ export function App() {
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
+
+  const [session, setSession] = useState<SessionInfo | null>(null);
+  useEffect(() => {
+    api
+      .GET("/api/session")
+      .then(({ data, response }) => {
+        if (response.status === 401) {
+          const next = window.location.pathname + window.location.search;
+          window.location.assign(`/auth/login?next=${encodeURIComponent(next)}`);
+          return;
+        }
+        if (data) {
+          setCsrfToken(data.csrf_token);
+          setSession(data);
+        }
+      })
+      .catch(() => undefined);
+  }, []);
+
+  async function signOut() {
+    await api.POST("/auth/logout" as never);
+    window.location.assign("/");
+  }
 
   // Poll for scans, so edits made by other tools show up while the page is open.
   const [generation, setGeneration] = useState(0);
@@ -182,6 +205,18 @@ export function App() {
             <button type="button" className="link rescan" onClick={() => void rescanNow()} disabled={!repoId}>
               Rescan now
             </button>
+            {session && session.sign_in === "oidc" && (
+              <>
+                <br />
+                <span className="signed-in">
+                  {session.name} · {session.role}
+                </span>
+                <br />
+                <button type="button" className="link rescan" onClick={() => void signOut()}>
+                  Sign out
+                </button>
+              </>
+            )}
           </div>
         </nav>
         <div className="workspace">

@@ -17,3 +17,18 @@ export type RepositoryInfo = components["schemas"]["RepositoryInfo"];
 export type PackageVersion = components["schemas"]["PackageVersion"];
 export type ManifestView = components["schemas"]["ManifestView"];
 export type ManifestSection = components["schemas"]["ManifestSection"];
+export type SessionInfo = components["schemas"]["SessionInfo"];
+
+// Changes carry the session's CSRF token; the server refuses them without it.
+let csrfToken = "";
+export function setCsrfToken(token: string) {
+  csrfToken = token;
+}
+api.use({
+  onRequest({ request }) {
+    if (!["GET", "HEAD", "OPTIONS"].includes(request.method) && csrfToken) {
+      request.headers.set("X-CSRF-Token", csrfToken);
+    }
+    return request;
+  },
+});

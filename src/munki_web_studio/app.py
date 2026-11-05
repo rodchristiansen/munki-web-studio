@@ -7,13 +7,18 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+import httpx
+from fastapi import Depends, FastAPI
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from starlette.types import Receive, Scope, Send
 
 from munki_web_studio.api import manifests, read
+from munki_web_studio.auth import routes as auth_routes
+from munki_web_studio.auth.model import Role
+from munki_web_studio.auth.sessions import SessionStore
 from munki_web_studio.mcp import create_mcp
 from munki_web_studio.repository.config import Settings, load_settings
 from munki_web_studio.repository.index import Index
@@ -41,6 +46,13 @@ def settings_from_environment() -> Settings:
     return Settings(repositories=(), state_dir=Path(".state").resolve())
 
 
+async def _refuse_without_oauth(scope: Scope, receive: Receive, send: Send) -> None:
+    response = PlainTextResponse(
+        "MCP sign-in is not available yet while browser sign-in is on.", status_code=401
+    )
+    await response(scope, receive, send)
+
+
 async def _watch(settings: Settings, index: Index) -> None:
     """Rescan on an interval so edits from other tools show up without a restart."""
     while True:
@@ -52,7 +64,11 @@ async def _watch(settings: Settings, index: Index) -> None:
                 logger.exception("Rescan of %s failed", repo.id)
 
 
-def create_app(settings: Settings | None = None, static_dir: Path = STATIC_DIR) -> FastAPI:
+def create_app(
+    settings: Settings | None = None,
+    static_dir: Path = STATIC_DIR,
+    oidc_http: httpx.Client | None = None,
+) -> FastAPI:
     settings = settings if settings is not None else settings_from_environment()
     services = Services(settings)
     mcp_app = create_mcp(services).http_app(path="/")
@@ -60,6 +76,8 @@ def create_app(settings: Settings | None = None, static_dir: Path = STATIC_DIR) 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         index = Index(settings.state_dir / "index.sqlite")
+        store = SessionStore(settings.state_dir / "state.sqlite")
+        app.state.auth = auth_routes.AuthState.create(settings.auth, store, oidc_http)
         app.state.settings = settings
         app.state.index = index
         services.index = index
@@ -75,6 +93,7 @@ def create_app(settings: Settings | None = None, static_dir: Path = STATIC_DIR) 
             if watcher:
                 watcher.cancel()
             index.close()
+            store.close()
 
     app = FastAPI(title=STUDIO.name, version=__version__, lifespan=lifespan)
     # Refuse requests addressed to any other host name, so a web page cannot use
@@ -85,9 +104,15 @@ def create_app(settings: Settings | None = None, static_dir: Path = STATIC_DIR) 
     def health() -> Health:  # pyright: ignore[reportUnusedFunction]
         return Health(status="ok", name=STUDIO.name, version=__version__)
 
-    app.include_router(read.router)
-    app.include_router(manifests.router)
-    app.mount("/mcp", mcp_app)
+    viewer = [Depends(auth_routes.require(Role.VIEWER))]
+    app.include_router(auth_routes.router)
+    app.include_router(read.router, dependencies=viewer)
+    app.include_router(manifests.router, dependencies=viewer)
+    if settings.auth.enabled:
+        # MCP clients cannot use the browser's session; they get OAuth in a later slice.
+        app.mount("/mcp", _refuse_without_oauth)
+    else:
+        app.mount("/mcp", mcp_app)
 
     if (static_dir / "index.html").is_file():
         app.mount("/", StaticFiles(directory=static_dir, html=True), name="workspace")
