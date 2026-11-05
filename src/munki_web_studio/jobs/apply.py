@@ -24,7 +24,8 @@ OLD = ".studio-old-"
 def _fsync_tree(root: Path) -> None:
     for path in [*root.rglob("*"), root]:
         if path.is_file():
-            with path.open("rb") as handle:
+            # Windows refuses to flush a handle opened only for reading (EBADF).
+            with path.open("r+b") as handle:
                 os.fsync(handle.fileno())
     with contextlib.suppress(OSError):
         fd = os.open(root.parent, os.O_RDONLY)
