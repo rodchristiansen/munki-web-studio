@@ -202,6 +202,49 @@ def _position(tree: Any, path: Path) -> tuple[Any, tuple[int, int]]:
     raise CodecError(f"Cannot follow {last!r}")
 
 
+def _scalar_list(value: Any) -> bool:
+    return isinstance(value, list) and all(
+        not isinstance(v, dict | list) for v in cast(list[Any], value)
+    )
+
+
+def _scalar_block_list(value: Any) -> bool:
+    """A non-empty block list (`- item` lines) whose items are single-line scalars."""
+    return (
+        isinstance(value, CommentedSeq)
+        and len(value) > 0
+        and not value.fa.flow_style()
+        and _scalar_list(value)
+    )
+
+
+def _replace_block_list(text: str, seq: Any, values: list[Any]) -> str:
+    """Rewrite only the item lines of a block list, keeping its indent, the lines
+    around it, and comments on items that stay."""
+    lines = _lines(text)
+    positions = [cast(tuple[int, int], seq.lc.item(i)) for i in range(len(seq))]
+    first_line, first_col = positions[0]
+    last_line = positions[-1][0]
+    if len({line for line, _ in positions}) != len(positions) or last_line - first_line + 1 != len(
+        seq
+    ):
+        raise CodecError("List items span several lines")
+    template = lines[first_line]
+    newline = "\r\n" if template.endswith("\r\n") else "\n"
+    prefix = template[:first_col]
+    old_items = {
+        lines[line][col : _scalar_end(lines[line], col)]: lines[line] for line, col in positions
+    }
+    rendered: list[str] = []
+    for value in values:
+        text_value = _render_scalar(value, "")
+        kept = old_items.get(text_value)
+        rendered.append(kept if kept is not None else prefix + text_value + newline)
+    if rendered and not rendered[-1].endswith(("\n", "\r\n")):
+        rendered[-1] += newline
+    return "".join(lines[:first_line] + rendered + lines[last_line + 1 :])
+
+
 def _lines(text: str) -> list[str]:
     return text.splitlines(keepends=True)
 
@@ -225,6 +268,8 @@ def _apply(text: str, tree: Any, change: Change) -> str:
             except KeyError as error:
                 raise CodecError("New keys need a rewrite") from error
             current = parent[change.path[-1]]
+            if _scalar_block_list(current) and _scalar_list(value):
+                return _replace_block_list(text, current, value)
             if isinstance(current, dict | list) or isinstance(value, dict | list):
                 raise CodecError("Container values need a rewrite")
             lines = _lines(text)

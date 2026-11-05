@@ -216,3 +216,11 @@ def test_flow_list_items_edit_in_place() -> None:
     assert result.surgical
     assert result.raw == b'catalogs: [testing, "prod, eu"]  # both\nname: x\n'
     assert load(result.raw).data["catalogs"] == ["testing", "prod, eu"]
+
+
+def test_block_lists_are_replaced_in_place() -> None:
+    raw = b"catalogs:\n  - testing   # first\n  - production\n\nrequires:\n  - x\n"
+    doc = load(raw)
+    result = edit(doc, [Set(("catalogs",), ["testing", "staging"])])
+    assert result.surgical
+    assert result.raw == b"catalogs:\n  - testing   # first\n  - staging\n\nrequires:\n  - x\n"
