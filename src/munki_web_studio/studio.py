@@ -15,6 +15,7 @@ class Studio:
     distribution: str
     package: str
     command: str
+    config_env: str
 
 
 STUDIO = Studio(
@@ -23,6 +24,7 @@ STUDIO = Studio(
     distribution="munki-web-studio",
     package="munki_web_studio",
     command="mwsctl",
+    config_env="MUNKI_WEB_STUDIO_CONFIG",
 )
 
 # Packages from other projects this studio must never import.

@@ -1,5 +1,6 @@
 """The command line."""
 
+from pathlib import Path
 from typing import Annotated
 
 import typer
@@ -29,13 +30,35 @@ def root(
 def serve(
     host: Annotated[str, typer.Option(help="Address to bind.")] = "127.0.0.1",
     port: Annotated[int, typer.Option(help="Port to listen on.")] = 3186,
+    config: Annotated[
+        Path | None,
+        typer.Option(help=f"Repository config file. Defaults to ${STUDIO.config_env}."),
+    ] = None,
 ) -> None:
     """Run the web app, API, and MCP server."""
     import uvicorn
 
     from munki_web_studio.app import create_app
+    from munki_web_studio.repository.config import load_settings
 
-    uvicorn.run(create_app(), host=host, port=port)
+    settings = load_settings(config) if config else None
+    uvicorn.run(create_app(settings), host=host, port=port)
+
+
+@cli.command()
+def openapi(
+    output: Annotated[Path | None, typer.Option(help="Write here instead of stdout.")] = None,
+) -> None:
+    """Print the API's OpenAPI schema."""
+    import json
+
+    from munki_web_studio.app import create_app
+
+    text = json.dumps(create_app().openapi(), indent=2, sort_keys=True) + "\n"
+    if output:
+        output.write_text(text, encoding="utf-8")
+    else:
+        typer.echo(text, nl=False)
 
 
 def main() -> None:
