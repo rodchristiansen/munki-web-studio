@@ -234,3 +234,58 @@ def test_credentials_in_remote_urls_do_not_reach_the_browser(
     refused = studio.post("/api/repositories/fixture/git/push")
     assert refused.status_code == 409
     assert "s3cret-token" not in refused.text and "someone" not in refused.text
+
+
+def test_the_commit_holds_the_checked_bytes_even_if_the_file_changes(
+    studio: TestClient, root: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from munki_web_studio import gitrepo
+
+    change_id = save_edit(studio, EDITOR, "Checked")
+    saved = (root / EDITOR).read_bytes()
+    original = gitrepo.Git.commit
+
+    def tamper_then_commit(self: gitrepo.Git, files: dict[str, bytes], *args: Any) -> str:
+        (root / EDITOR).write_bytes(saved.replace(b"Checked", b"Tampered"))
+        return original(self, files, *args)
+
+    monkeypatch.setattr(gitrepo.Git, "commit", tamper_then_commit)
+    assert commit(studio, change_id).status_code == 200
+    assert git(root, "show", f"HEAD:{EDITOR}").encode() == saved
+
+
+def test_paths_are_literal_not_patterns(tmp_path: Path, root: Path) -> None:
+    star = root / "pkgsinfo/apps/creative/Example*.plist"
+    star.write_bytes((root / EDITOR).read_bytes().replace(b"ExampleEditor", b"ExampleStar"))
+    git(root, "add", "-A")
+    git(root, "commit", "--quiet", "-m", "Add a file with a star in its name")
+    for client in make(tmp_path, root):
+        change_id = save_edit(client, "pkgsinfo/apps/creative/Example*.plist", "Star")
+        (root / EDITOR).write_bytes((root / EDITOR).read_bytes() + b"\n")
+        done = commit(client, change_id)
+        assert done.status_code == 200, done.text
+        assert done.json()["paths"] == ["pkgsinfo/apps/creative/Example*.plist"]
+
+
+def test_a_persons_own_staged_edit_is_kept(studio: TestClient, root: Path) -> None:
+    change_id = save_edit(studio, EDITOR, "From the studio")
+    git(root, "add", EDITOR)
+    staged = git(root, "ls-files", "-s", EDITOR)
+    other = root / BROWSER
+    other.write_bytes(other.read_bytes().replace(b"Example Browser", b"Staged by hand"))
+    git(root, "add", BROWSER)
+    assert commit(studio, change_id).status_code == 200
+    assert git(root, "ls-files", "-s", EDITOR) == staged
+    assert BROWSER in git(root, "diff", "--cached", "--name-only")
+    assert git(root, "status", "--porcelain", EDITOR) == ""
+
+
+def test_commits_and_pushes_are_audited(studio: TestClient, root: Path) -> None:
+    change_id = save_edit(studio, EDITOR, "Audited")
+    sha = commit(studio, change_id).json()["commit"]
+    studio.post("/api/repositories/fixture/git/push")
+    entries = studio.get("/api/audit").json()
+    actions = {e["action"]: e for e in entries}
+    assert actions["git commit"]["detail"]["commit"] == sha
+    assert actions["git commit"]["detail"]["paths"] == [EDITOR]
+    assert actions["git push"]["outcome"] == "refused"
