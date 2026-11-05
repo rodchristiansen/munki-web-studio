@@ -22,9 +22,11 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/munki_web_studio"]
+artifacts = ["src/munki_web_studio/static/**"]
 
 [tool.ruff]
 line-length = 100
+extend-exclude = ["web"]
 target-version = "py314"
 src = ["src", "tests"]
 

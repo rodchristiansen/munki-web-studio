@@ -15,3 +15,9 @@ coverage/
 data/
 repos/
 uploads/
+
+# Built browser workspace
+src/*/static/
+web/test-results/
+web/playwright-report/
+*.tsbuildinfo

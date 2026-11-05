@@ -68,3 +68,20 @@ uv run mwsctl serve
 ```
 
 The health check is at `/api/health` and the MCP server at `/mcp`.
+
+The browser workspace lives in `web/` (React, TypeScript, Vite, pnpm). Build it
+into the Python package so `mwsctl serve` serves it at `/`:
+
+```sh
+cd web && pnpm install && pnpm build
+```
+
+Run its type check, component tests, and the browser test against the real
+server:
+
+```sh
+pnpm typecheck && pnpm test && pnpm e2e
+```
+
+For live reloading, run `uv run mwsctl serve` and `pnpm dev` side by side; the
+Vite dev server forwards `/api` and `/mcp` to the API.
