@@ -1803,6 +1803,57 @@
         "title": "PackageVersion",
         "type": "object"
       },
+      "PublishingInfo": {
+        "properties": {
+          "current": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReleaseInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mode": {
+            "description": "live: clients read the repository itself; snapshot; or none",
+            "title": "Mode",
+            "type": "string"
+          },
+          "releases": {
+            "items": {
+              "$ref": "#/components/schemas/ReleaseInfo"
+            },
+            "title": "Releases",
+            "type": "array"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target"
+          },
+          "unpublished_changes": {
+            "description": "The repository changed since the current release was published",
+            "title": "Unpublished Changes",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "mode",
+          "target",
+          "current",
+          "releases",
+          "unpublished_changes"
+        ],
+        "title": "PublishingInfo",
+        "type": "object"
+      },
       "ReferenceInfo": {
         "properties": {
           "condition": {
@@ -1837,6 +1888,39 @@
           "condition"
         ],
         "title": "ReferenceInfo",
+        "type": "object"
+      },
+      "ReleaseInfo": {
+        "properties": {
+          "bytes": {
+            "title": "Bytes",
+            "type": "integer"
+          },
+          "files": {
+            "title": "Files",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "published_at": {
+            "title": "Published At",
+            "type": "string"
+          },
+          "repository_revision": {
+            "title": "Repository Revision",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "published_at",
+          "repository_revision",
+          "files",
+          "bytes"
+        ],
+        "title": "ReleaseInfo",
         "type": "object"
       },
       "RepositoryInfo": {
@@ -3927,6 +4011,48 @@
         "summary": "Get Package",
         "tags": [
           "repositories"
+        ]
+      }
+    },
+    "/api/repositories/{repo_id}/publishing": {
+      "get": {
+        "operationId": "publishing_api_repositories__repo_id__publishing_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repo_id",
+            "required": true,
+            "schema": {
+              "title": "Repo Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublishingInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Publishing",
+        "tags": [
+          "publishing"
         ]
       }
     },

@@ -20,6 +20,7 @@ from munki_web_studio.api import changes as change_routes
 from munki_web_studio.api import git as git_routes
 from munki_web_studio.api import jobs as job_routes
 from munki_web_studio.api import manifests, read
+from munki_web_studio.api import publishing as publishing_routes
 from munki_web_studio.api import workers as worker_routes
 from munki_web_studio.audit import AuditLog
 from munki_web_studio.auth import routes as auth_routes
@@ -151,6 +152,7 @@ def create_app(
     app.include_router(job_routes.router)
     app.include_router(catalog_routes.router)
     app.include_router(git_routes.router)
+    app.include_router(publishing_routes.router)
     app.include_router(worker_routes.router)
     app.include_router(worker_routes.settings_router)
     # With sign-in on, MCP requests need a studio bearer token (see auth/mcp.py).

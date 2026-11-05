@@ -8,6 +8,11 @@ writable = false
 
 state_dir = "/var/lib/studio"
 
+[repositories.publish]
+target = "/srv/munki-published"   # clients are served target/current
+keep = 5
+hardlink = false
+
 [[workers]]
 id = "mac-1"
 token_sha256 = "…"   # from `<command> worker token`; the worker keeps the token
@@ -26,12 +31,24 @@ class ConfigError(Exception):
 
 
 @dataclass(frozen=True)
+class Publish:
+    """Where published snapshots go. Clients are served from `target/current`."""
+
+    target: Path
+    keep: int = 5
+    # Hard-link files into releases instead of copying them. Saves space, but a
+    # file changed in place in the repository would then change in a release.
+    hardlink: bool = False
+
+
+@dataclass(frozen=True)
 class Repository:
     id: str
     name: str
     root: Path
     writable: bool = False
     live: bool = False
+    publish: Publish | None = None
 
 
 @dataclass(frozen=True)
@@ -95,8 +112,14 @@ def parse_settings(raw: dict[str, Any], base: Path) -> Settings:
                 root=root,
                 writable=bool(item.get("writable", False)),
                 live=bool(item.get("live", False)),
+                publish=_parse_publish(repo_id, root, item.get("publish"), base),
             )
         )
+        if repos[-1].live and repos[-1].publish:
+            raise ConfigError(
+                f"Repository {repo_id} is live (clients read it directly) and also has a "
+                "publish target; choose one"
+            )
     state = raw.get("state_dir", ".state")
     if not isinstance(state, str):
         raise ConfigError("state_dir must be a path")
@@ -152,3 +175,27 @@ def _parse_workers(entries: Any) -> tuple[WorkerEntry, ...]:
             raise ConfigError(f"Worker id {worker_id} is used twice")
         found.append(WorkerEntry(worker_id, digest))
     return tuple(found)
+
+
+def _parse_publish(repo_id: str, root: Path, entry: Any, base: Path) -> Publish | None:
+    if entry is None:
+        return None
+    if not isinstance(entry, dict):
+        raise ConfigError(f"Repository {repo_id}: publish must be a table")
+    item = cast(dict[str, Any], entry)
+    target, keep = item.get("target"), item.get("keep", 5)
+    hardlink = item.get("hardlink", False)
+    if not isinstance(hardlink, bool):
+        raise ConfigError(f"Repository {repo_id}: publish.hardlink must be true or false")
+    if not isinstance(target, str) or not target:
+        raise ConfigError(f"Repository {repo_id}: publish needs a target folder")
+    if not isinstance(keep, int) or isinstance(keep, bool) or keep < 1:
+        raise ConfigError(f"Repository {repo_id}: publish.keep must be 1 or more")
+    folder = (base / target).resolve(strict=False)
+    real_root = root.resolve(strict=False)
+    if folder == real_root or folder.is_relative_to(real_root) or real_root.is_relative_to(folder):
+        raise ConfigError(
+            f"Repository {repo_id}: the publish target and the repository "
+            "must not contain each other"
+        )
+    return Publish(target=folder, keep=keep, hardlink=hardlink)

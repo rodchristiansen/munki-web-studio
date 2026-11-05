@@ -56,6 +56,37 @@ overwriting that change. If clients read the folder directly, mark it
 `live = true`: the studio then asks for an explicit confirmation before each
 save, because the change reaches clients at once.
 
+## Publishing
+
+A repository reaches clients in one of two ways, and the studio says which.
+
+- **Live on save.** Set `live = true` when clients read the repository folder
+  itself. Every save reaches them at once. The top bar says so, saving asks for
+  confirmation, and there is no separate publish step.
+- **Snapshot.** Give the repository a publish target and serve
+  `target/current` to clients instead:
+
+```toml
+[repositories.publish]
+target = "/srv/munki-published"
+keep = 5
+```
+
+Publish to clients (Settings, for Publishers) runs a job that copies `catalogs`,
+`manifests`, `pkgs`, `icons` and `client_resources` into a new release under
+`target/releases`. It checks every copied file against its hash, then switches
+`target/current` to the release with one rename, so a web server sees either
+the old release or the new one. A release is named by a hash of its contents,
+so publishing again with nothing changed does nothing. A failed or interrupted
+publish leaves `current` on the previous release, and the next publish finishes
+the job. The newest `keep` releases are kept for rollback. Set `hardlink = true`
+to link files instead of copying them, which saves space but means a file
+changed in place in the repository changes in the release too. Object storage
+targets (Azure Blob, S3) come later; copying to a prefix is not atomic there.
+
+On Windows, `current` is a directory junction. Windows cannot rename over a
+directory, so the switch is two renames with a brief moment without `current`.
+
 ## Git
 
 When a repository is a Git working tree, the top bar shows its branch, and Settings

@@ -16,8 +16,10 @@ from dataclasses import dataclass
 from typing import Any
 
 from munki_web_studio import platform
+from munki_web_studio.auth.model import Role
 from munki_web_studio.jobs.remote import RemoteSpec
 from munki_web_studio.jobs.store import Job, JobStore, LeaseLostError
+from munki_web_studio.publish import PublishError, publish_repository
 from munki_web_studio.repository.config import Repository, Settings
 from munki_web_studio.repository.index import Index
 from munki_web_studio.repository.references import validate
@@ -77,6 +79,8 @@ class Operation:
     timeout_seconds: int = 600
     # Set for operations a worker on another machine runs with platform tools.
     remote: RemoteSpec | None = None
+    # The role needed to start it.
+    role: Role = Role.EDITOR
 
 
 def _validate(ctx: JobContext) -> dict[str, Any]:
@@ -104,6 +108,18 @@ def _rescan(ctx: JobContext) -> dict[str, Any]:
     }
 
 
+def _publish(ctx: JobContext) -> dict[str, Any]:
+    try:
+        return publish_repository(
+            ctx.repo,
+            ctx.job.input_revision,
+            lambda fraction, message: ctx.progress(fraction, message),
+            ctx.check,
+        )
+    except PublishError as error:
+        raise JobFailedError(str(error)) from None
+
+
 def _remote_only(ctx: JobContext) -> None:
     raise JobFailedError(f"{ctx.job.operation} runs on a worker, not in the studio")
 
@@ -113,6 +129,15 @@ OPERATIONS: dict[str, Operation] = {
     for op in (
         Operation("repository.validate", "Validate the repository", _validate),
         Operation("repository.rescan", "Re-read every file", _rescan, max_attempts=2),
+        # Safe to retry: a release is named by its contents and switched in last.
+        Operation(
+            "repository.publish",
+            "Publish to clients",
+            _publish,
+            max_attempts=2,
+            timeout_seconds=3600,
+            role=Role.PUBLISHER,
+        ),
         *(
             Operation(
                 spec.name,
