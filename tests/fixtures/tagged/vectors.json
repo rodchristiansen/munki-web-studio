@@ -1,0 +1,3779 @@
+[
+  {
+    "name": "codec/manifest-plistlib.plist",
+    "tagged": {
+      "$type": "dict",
+      "value": [
+        [
+          "catalogs",
+          [
+            "testing",
+            "production"
+          ]
+        ],
+        [
+          "included_manifests",
+          [
+            "site/base",
+            "site/browsers"
+          ]
+        ],
+        [
+          "managed_installs",
+          [
+            "ExampleEditor",
+            "ExampleViewer"
+          ]
+        ],
+        [
+          "conditional_items",
+          [
+            {
+              "$type": "dict",
+              "value": [
+                [
+                  "condition",
+                  "machine_type == \"laptop\" AND os_vers_major >= 14"
+                ],
+                [
+                  "managed_installs",
+                  [
+                    "ExampleVPN"
+                  ]
+                ]
+              ]
+            }
+          ]
+        ]
+      ]
+    }
+  },
+  {
+    "name": "codec/pkginfo-binary.plist",
+    "tagged": {
+      "$type": "dict",
+      "value": [
+        [
+          "name",
+          "ExampleEditor"
+        ],
+        [
+          "display_name",
+          "Example Editor"
+        ],
+        [
+          "version",
+          "2.10"
+        ],
+        [
+          "catalogs",
+          [
+            "testing",
+            "production"
+          ]
+        ],
+        [
+          "category",
+          "Productivity"
+        ],
+        [
+          "description",
+          "An invented editor used only as a test fixture."
+        ],
+        [
+          "installer_item_location",
+          "apps/ExampleEditor-2.10.dmg"
+        ],
+        [
+          "installer_item_hash",
+          "0000000000000000000000000000000000000000000000000000000000000000"
+        ],
+        [
+          "installer_item_size",
+          184320
+        ],
+        [
+          "installed_size",
+          {
+            "$type": "int",
+            "value": "9007199254740993"
+          }
+        ],
+        [
+          "installer_type",
+          "copy_from_dmg"
+        ],
+        [
+          "items_to_copy",
+          [
+            {
+              "$type": "dict",
+              "value": [
+                [
+                  "source_item",
+                  "Example Editor.app"
+                ],
+                [
+                  "destination_path",
+                  "/Applications"
+                ]
+              ]
+            }
+          ]
+        ],
+        [
+          "minimum_os_version",
+          "13.0"
+        ],
+        [
+          "unattended_install",
+          true
+        ],
+        [
+          "uninstallable",
+          false
+        ],
+        [
+          "_metadata",
+          {
+            "$type": "dict",
+            "value": [
+              [
+                "created_by",
+                "fixture"
+              ],
+              [
+                "creation_date",
+                {
+                  "$type": "date",
+                  "value": "2026-10-20T09:30:00"
+                }
+              ]
+            ]
+          }
+        ],
+        [
+          "postinstall_script",
+          "#!/bin/sh\necho \"done & <ok>\"\nexit 0\n"
+        ],
+        [
+          "icon_data",
+          {
+            "$type": "data",
+            "value": "iVBORw0KGgoAAA=="
+          }
+        ],
+        [
+          "x_unknown_site_key",
+          {
+            "$type": "dict",
+            "value": [
+              [
+                "nested",
+                [
+                  1,
+                  {
+                    "$type": "real",
+                    "value": "2.5"
+                  },
+                  "three"
+                ]
+              ]
+            ]
+          }
+        ]
+      ]
+    }
+  },
+  {
+    "name": "codec/pkginfo-handformatted.plist",
+    "tagged": {
+      "$type": "dict",
+      "value": [
+        [
+          "name",
+          "ExampleViewer"
+        ],
+        [
+          "display_name",
+          "Example Viewer"
+        ],
+        [
+          "version",
+          "1.0"
+        ],
+        [
+          "catalogs",
+          [
+            "testing"
+          ]
+        ],
+        [
+          "installer_item_location",
+          "apps/ExampleViewer-1.0.pkg"
+        ],
+        [
+          "installer_type",
+          "pkg"
+        ],
+        [
+          "receipts",
+          [
+            {
+              "$type": "dict",
+              "value": [
+                [
+                  "packageid",
+                  "com.example.viewer"
+                ],
+                [
+                  "version",
+                  "1.0"
+                ],
+                [
+                  "optional",
+                  false
+                ]
+              ]
+            }
+          ]
+        ],
+        [
+          "restart_action",
+          "None"
+        ]
+      ]
+    }
+  },
+  {
+    "name": "codec/pkginfo-plistlib.plist",
+    "tagged": {
+      "$type": "dict",
+      "value": [
+        [
+          "name",
+          "ExampleEditor"
+        ],
+        [
+          "display_name",
+          "Example Editor"
+        ],
+        [
+          "version",
+          "2.10"
+        ],
+        [
+          "catalogs",
+          [
+            "testing",
+            "production"
+          ]
+        ],
+        [
+          "category",
+          "Productivity"
+        ],
+        [
+          "description",
+          "An invented editor used only as a test fixture."
+        ],
+        [
+          "installer_item_location",
+          "apps/ExampleEditor-2.10.dmg"
+        ],
+        [
+          "installer_item_hash",
+          "0000000000000000000000000000000000000000000000000000000000000000"
+        ],
+        [
+          "installer_item_size",
+          184320
+        ],
+        [
+          "installed_size",
+          {
+            "$type": "int",
+            "value": "9007199254740993"
+          }
+        ],
+        [
+          "installer_type",
+          "copy_from_dmg"
+        ],
+        [
+          "items_to_copy",
+          [
+            {
+              "$type": "dict",
+              "value": [
+                [
+                  "source_item",
+                  "Example Editor.app"
+                ],
+                [
+                  "destination_path",
+                  "/Applications"
+                ]
+              ]
+            }
+          ]
+        ],
+        [
+          "minimum_os_version",
+          "13.0"
+        ],
+        [
+          "unattended_install",
+          true
+        ],
+        [
+          "uninstallable",
+          false
+        ],
+        [
+          "_metadata",
+          {
+            "$type": "dict",
+            "value": [
+              [
+                "created_by",
+                "fixture"
+              ],
+              [
+                "creation_date",
+                {
+                  "$type": "date",
+                  "value": "2026-10-20T09:30:00"
+                }
+              ]
+            ]
+          }
+        ],
+        [
+          "postinstall_script",
+          "#!/bin/sh\necho \"done & <ok>\"\nexit 0\n"
+        ],
+        [
+          "icon_data",
+          {
+            "$type": "data",
+            "value": "iVBORw0KGgoAAA=="
+          }
+        ],
+        [
+          "x_unknown_site_key",
+          {
+            "$type": "dict",
+            "value": [
+              [
+                "nested",
+                [
+                  1,
+                  {
+                    "$type": "real",
+                    "value": "2.5"
+                  },
+                  "three"
+                ]
+              ]
+            ]
+          }
+        ]
+      ]
+    }
+  },
+  {
+    "name": "codec/pkginfo.yaml",
+    "tagged": {
+      "$type": "dict",
+      "value": [
+        [
+          "name",
+          "ExampleCLI"
+        ],
+        [
+          "display_name",
+          "Example CLI"
+        ],
+        [
+          "version",
+          "3.0"
+        ],
+        [
+          "catalogs",
+          [
+            "testing"
+          ]
+        ],
+        [
+          "installer_item_location",
+          "tools/ExampleCLI-3.0.pkg"
+        ],
+        [
+          "installer_type",
+          "pkg"
+        ],
+        [
+          "receipts",
+          [
+            {
+              "$type": "dict",
+              "value": [
+                [
+                  "packageid",
+                  "com.example.cli"
+                ],
+                [
+                  "version",
+                  "3.0"
+                ]
+              ]
+            }
+          ]
+        ],
+        [
+          "minimum_os_version",
+          "13.0"
+        ],
+        [
+          "unattended_install",
+          true
+        ],
+        [
+          "installcheck_script",
+          "#!/bin/zsh\n# exit 0 means install is needed\n[[ -x /usr/local/bin/example ]] && exit 1\nexit 0\n"
+        ],
+        [
+          "x_unknown_site_key",
+          "keep-me"
+        ]
+      ]
+    }
+  },
+  {
+    "name": "repo/catalogs/all",
+    "tagged": [
+      {
+        "$type": "dict",
+        "value": [
+          [
+            "catalogs",
+            [
+              "testing"
+            ]
+          ],
+          [
+            "category",
+            "Utilities"
+          ],
+          [
+            "display_name",
+            "Example CLI"
+          ],
+          [
+            "installcheck_script",
+            "#!/bin/zsh\n# exit 0 means install is needed\n[[ -x /usr/local/bin/example ]] && exit 1\nexit 0\n"
+          ],
+          [
+            "installer_item_location",
+            "apps/ExampleCLI-3.0.pkg"
+          ],
+          [
+            "loop_fingerprint",
+            "1b4824bac3a13115"
+          ],
+          [
+            "minimum_os_version",
+            "13.0"
+          ],
+          [
+            "name",
+            "ExampleCLI"
+          ],
+          [
+            "receipts",
+            [
+              {
+                "$type": "dict",
+                "value": [
+                  [
+                    "packageid",
+                    "com.example.cli"
+                  ],
+                  [
+                    "version",
+                    "3.0"
+                  ]
+                ]
+              }
+            ]
+          ],
+          [
+            "unattended_install",
+            true
+          ],
+          [
+            "version",
+            "3.0"
+          ],
+          [
+            "x_unknown_site_key",
+            "keep-me"
+          ]
+        ]
+      },
+      {
+        "$type": "dict",
+        "value": [
+          [
+            "catalogs",
+            [
+              "testing",
+              "production"
+            ]
+          ],
+          [
+            "category",
+            "Utilities"
+          ],
+          [
+            "description",
+            "Invented ExampleRuntime package for tests."
+          ],
+          [
+            "developer",
+            "Example Co"
+          ],
+          [
+            "display_name",
+            "Example Runtime"
+          ],
+          [
+            "installer_item_hash",
+            "0000000000000000000000000000000000000000000000000000000000000000"
+          ],
+          [
+            "installer_item_location",
+            "apps/ExampleRuntime-5.0.pkg"
+          ],
+          [
+            "installer_item_size",
+            1024
+          ],
+          [
+            "loop_fingerprint",
+            "7fabe9110cb06d98"
+          ],
+          [
+            "minimum_os_version",
+            "13.0"
+          ],
+          [
+            "name",
+            "ExampleRuntime"
+          ],
+          [
+            "receipts",
+            [
+              {
+                "$type": "dict",
+                "value": [
+                  [
+                    "optional",
+                    false
+                  ],
+                  [
+                    "packageid",
+                    "com.example.exampleruntime"
+                  ],
+                  [
+                    "version",
+                    "5.0"
+                  ]
+                ]
+              }
+            ]
+          ],
+          [
+            "unattended_install",
+            true
+          ],
+          [
+            "version",
+            "5.0"
+          ]
+        ]
+      },
+      {
+        "$type": "dict",
+        "value": [
+          [
+            "catalogs",
+            [
+              "testing"
+            ]
+          ],
+          [
+            "category",
+            "Browsers"
+          ],
+          [
+            "description",
+            "Invented ExampleBrowser package for tests."
+          ],
+          [
+            "developer",
+            "Example Co"
+          ],
+          [
+            "display_name",
+            "Example Browser"
+          ],
+          [
+            "installer_item_hash",
+            "0000000000000000000000000000000000000000000000000000000000000000"
+          ],
+          [
+            "installer_item_location",
+            "apps/ExampleBrowser-136.0.dmg"
+          ],
+          [
+            "installer_item_size",
+            1024
+          ],
+          [
+            "installer_type",
+            "copy_from_dmg"
+          ],
+          [
+            "installs",
+            [
+              {
+                "$type": "dict",
+                "value": [
+                  [
+                    "CFBundleShortVersionString",
+                    "136.0"
+                  ],
+                  [
+                    "path",
+                    "/Applications/ExampleBrowser.app"
+                  ],
+                  [
+                    "type",
+                    "application"
+                  ]
+                ]
+              }
+            ]
+          ],
+          [
+            "items_to_copy",
+            [
+              {
+                "$type": "dict",
+                "value": [
+                  [
+                    "destination_path",
+                    "/Applications"
+                  ],
+                  [
+                    "source_item",
+                    "ExampleBrowser.app"
+                  ]
+                ]
+              }
+            ]
+          ],
+          [
+            "loop_fingerprint",
+            "9793b2b47d8c15c4"
+          ],
+          [
+            "minimum_os_version",
+            "13.0"
+          ],
+          [
+            "name",
+            "ExampleBrowser"
+          ],
+          [
+            "unattended_install",
+            true
+          ],
+          [
+            "version",
+            "136.0"
+          ]
+        ]
+      },
+      {
+        "$type": "dict",
+        "value": [
+          [
+            "catalogs",
+            [
+              "testing",
+              "production"
+            ]
+          ],
+          [
+            "category",
+            "Browsers"
+          ],
+          [
+            "description",
+            "Invented ExampleBrowser package for tests."
+          ],
+          [
+            "developer",
+            "Example Co"
+          ],
+          [
+            "display_name",
+            "Example Browser"
+          ],
+          [
+            "installer_item_hash",
+            "0000000000000000000000000000000000000000000000000000000000000000"
+          ],
+          [
+            "installer_item_location",
+            "apps/ExampleBrowser-135.0.dmg"
+          ],
+          [
+            "installer_item_size",
+            1024
+          ],
+          [
+            "installer_type",
+            "copy_from_dmg"
+          ],
+          [
+            "installs",
+            [
+              {
+                "$type": "dict",
+                "value": [
+                  [
+                    "CFBundleShortVersionString",
+                    "135.0"
+                  ],
+                  [
+                    "path",
+                    "/Applications/ExampleBrowser.app"
+                  ],
+                  [
+                    "type",
+                    "application"
+                  ]
+                ]
+              }
+            ]
+          ],
+          [
+            "items_to_copy",
+            [
+              {
+                "$type": "dict",
+                "value": [
+                  [
+                    "destination_path",
+                    "/Applications"
+                  ],
+                  [
+                    "source_item",
+                    "ExampleBrowser.app"
+                  ]
+                ]
+              }
+            ]
+          ],
+          [
+            "loop_fingerprint",
+            "102736b1c8eed31a"
+          ],
+          [
+            "minimum_os_version",
+            "13.0"
+          ],
+          [
+            "name",
+            "ExampleBrowser"
+          ],
+          [
+            "unattended_install",
+            true
+          ],
+          [
+            "version",
+            "135.0"
+          ]
+        ]
+      },
+      {
+        "$type": "dict",
+        "value": [
+          [
+            "catalogs",
+            [
+              "testing"
+            ]
+          ],
+          [
+            "category",
+            "Browsers"
+          ],
+          [
+            "description",
+            "Invented ExampleBrowser package for tests."
+          ],
+          [
+            "developer",
+            "Example Co"
+          ],
+          [
+            "display_name",
+            "Example Browser"
+          ],
+          [
+            "installer_item_hash",
+            "0000000000000000000000000000000000000000000000000000000000000000"
+          ],
+          [
+            "installer_item_location",
+            "apps/ExampleBrowser-136.0.dmg"
+          ],
+          [
+            "installer_item_size",
+            1024
+          ],
+          [
+            "installer_type",
+            "copy_from_dmg"
+          ],
+          [
+            "installs",
+            [
+              {
+                "$type": "dict",
+                "value": [
+                  [
+                    "CFBundleShortVersionString",
+                    "136.0"
+                  ],
+                  [
+                    "path",
+                    "/Applications/ExampleBrowser.app"
+                  ],
+                  [
+                    "type",
+                    "application"
+                  ]
+                ]
+              }
+            ]
+          ],
+          [
+            "items_to_copy",
+            [
+              {
+                "$type": "dict",
+                "value": [
+                  [
+                    "destination_path",
+                    "/Applications"
+                  ],
+                  [
+                    "source_item",
+                    "ExampleBrowser.app"
+                  ]
+                ]
+              }
+            ]
+          ],
+          [
+            "loop_fingerprint",
+            "9793b2b47d8c15c4"
+          ],
+          [
+            "minimum_os_version",
+            "13.0"
+          ],
+          [
+            "name",
+            "ExampleBrowser"
+          ],
+          [
+            "unattended_install",
+            true
+          ],
+          [
+            "version",
+            "136.0"
+          ]
+        ]
+      },
+      {
+        "$type": "dict",
+        "value": [
+          [
+            "catalogs",
+            [
+              "testing",
+              "production"
+            ]
+          ],
+          [
+            "category",
+            "Creative"
+          ],
+          [
+            "description",
+            "Invented ExampleEditor package for tests."
+          ],
+          [
+            "developer",
+            "Example Co"
+          ],
+          [
+            "display_name",
+            "Example Editor"
+          ],
+          [
+            "installed_size",
+            {
+              "$type": "int",
+              "value": "9007199254740993"
+            }
+          ],
+          [
+            "installer_item_hash",
+            "0000000000000000000000000000000000000000000000000000000000000000"
+          ],
+          [
+            "installer_item_location",
+            "apps/ExampleEditor-2.10.dmg"
+          ],
+          [
+            "installer_item_size",
+            1024
+          ],
+          [
+            "installer_type",
+            "copy_from_dmg"
+          ],
+          [
+            "installs",
+            [
+              {
+                "$type": "dict",
+                "value": [
+                  [
+                    "CFBundleShortVersionString",
+                    "2.10"
+                  ],
+                  [
+                    "path",
+                    "/Applications/ExampleEditor.app"
+                  ],
+                  [
+                    "type",
+                    "application"
+                  ]
+                ]
+              }
+            ]
+          ],
+          [
+            "items_to_copy",
+            [
+              {
+                "$type": "dict",
+                "value": [
+                  [
+                    "destination_path",
+                    "/Applications"
+                  ],
+                  [
+                    "source_item",
+                    "ExampleEditor.app"
+                  ]
+                ]
+              }
+            ]
+          ],
+          [
+            "loop_fingerprint",
+            "d3a5ddde3618daf4"
+          ],
+          [
+            "minimum_os_version",
+            "13.0"
+          ],
+          [
+            "name",
+            "ExampleEditor"
+          ],
+          [
+            "postinstall_script",
+            "#!/bin/sh\necho \"done & <ok>\"\nexit 0\n"
+          ],
+          [
+            "requires",
+            [
+              "ExampleRuntime"
+            ]
+          ],
+          [
+            "unattended_install",
+            true
+          ],
+          [
+            "version",
+            "2.10"
+          ],
+          [
+            "x_unknown_site_key",
+            {
+              "$type": "dict",
+              "value": [
+                [
+                  "nested",
+                  [
+                    1,
+                    {
+                      "$type": "real",
+                      "value": "2.5"
+                    },
+                    "three"
+                  ]
+                ]
+              ]
+            }
+          ]
+        ]
+      },
+      {
+        "$type": "dict",
+        "value": [
+          [
+            "catalogs",
+            [
+              "testing",
+              "production"
+            ]
+          ],
+          [
+            "category",
+            "Creative"
+          ],
+          [
+            "description",
+            "Invented ExampleViewer package for tests."
+          ],
+          [
+            "developer",
+            "Example Co"
+          ],
+          [
+            "display_name",
+            "Example Viewer"
+          ],
+          [
+            "icon_data",
+            {
+              "$type": "data",
+              "value": "iVBORw0KGgoAAA=="
+            }
+          ],
+          [
+            "installer_item_hash",
+            "0000000000000000000000000000000000000000000000000000000000000000"
+          ],
+          [
+            "installer_item_location",
+            "apps/ExampleViewer-1.0.dmg"
+          ],
+          [
+            "installer_item_size",
+            1024
+          ],
+          [
+            "installer_type",
+            "copy_from_dmg"
+          ],
+          [
+            "installs",
+            [
+              {
+                "$type": "dict",
+                "value": [
+                  [
+                    "CFBundleShortVersionString",
+                    "1.0"
+                  ],
+                  [
+                    "path",
+                    "/Applications/ExampleViewer.app"
+                  ],
+                  [
+                    "type",
+                    "application"
+                  ]
+                ]
+              }
+            ]
+          ],
+          [
+            "items_to_copy",
+            [
+              {
+                "$type": "dict",
+                "value": [
+                  [
+                    "destination_path",
+                    "/Applications"
+                  ],
+                  [
+                    "source_item",
+                    "ExampleViewer.app"
+                  ]
+                ]
+              }
+            ]
+          ],
+          [
+            "loop_fingerprint",
+            "3a035900104867cc"
+          ],
+          [
+            "minimum_os_version",
+            "13.0"
+          ],
+          [
+            "name",
+            "ExampleViewer"
+          ],
+          [
+            "unattended_install",
+            true
+          ],
+          [
+            "version",
+            "1.0"
+          ]
+        ]
+      },
+      {
+        "$type": "dict",
+        "value": [
+          [
+            "catalogs",
+            [
+              "testing"
+            ]
+          ],
+          [
+            "category",
+            "Creative"
+          ],
+          [
+            "description",
+            "Invented ExampleEditorPlugin package for tests."
+          ],
+          [
+            "developer",
+            "Example Co"
+          ],
+          [
+            "display_name",
+            "Example EditorPlugin"
+          ],
+          [
+            "installer_item_hash",
+            "0000000000000000000000000000000000000000000000000000000000000000"
+          ],
+          [
+            "installer_item_location",
+            "apps/ExampleEditorPlugin-1.0.pkg"
+          ],
+          [
+            "installer_item_size",
+            1024
+          ],
+          [
+            "loop_fingerprint",
+            "65be3eba0a30ab01"
+          ],
+          [
+            "minimum_os_version",
+            "13.0"
+          ],
+          [
+            "name",
+            "ExampleEditorPlugin"
+          ],
+          [
+            "receipts",
+            [
+              {
+                "$type": "dict",
+                "value": [
+                  [
+                    "optional",
+                    false
+                  ],
+                  [
+                    "packageid",
+                    "com.example.exampleeditorplugin"
+                  ],
+                  [
+                    "version",
+                    "1.0"
+                  ]
+                ]
+              }
+            ]
+          ],
+          [
+            "unattended_install",
+            true
+          ],
+          [
+            "update_for",
+            [
+              "ExampleEditor"
+            ]
+          ],
+          [
+            "version",
+            "1.0"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "name": "repo/catalogs/production",
+    "tagged": [
+      {
+        "$type": "dict",
+        "value": [
+          [
+            "catalogs",
+            [
+              "testing",
+              "production"
+            ]
+          ],
+          [
+            "category",
+            "Utilities"
+          ],
+          [
+            "description",
+            "Invented ExampleRuntime package for tests."
+          ],
+          [
+            "developer",
+            "Example Co"
+          ],
+          [
+            "display_name",
+            "Example Runtime"
+          ],
+          [
+            "installer_item_hash",
+            "0000000000000000000000000000000000000000000000000000000000000000"
+          ],
+          [
+            "installer_item_location",
+            "apps/ExampleRuntime-5.0.pkg"
+          ],
+          [
+            "installer_item_size",
+            1024
+          ],
+          [
+            "loop_fingerprint",
+            "7fabe9110cb06d98"
+          ],
+          [
+            "minimum_os_version",
+            "13.0"
+          ],
+          [
+            "name",
+            "ExampleRuntime"
+          ],
+          [
+            "receipts",
+            [
+              {
+                "$type": "dict",
+                "value": [
+                  [
+                    "optional",
+                    false
+                  ],
+                  [
+                    "packageid",
+                    "com.example.exampleruntime"
+                  ],
+                  [
+                    "version",
+                    "5.0"
+                  ]
+                ]
+              }
+            ]
+          ],
+          [
+            "unattended_install",
+            true
+          ],
+          [
+            "version",
+            "5.0"
+          ]
+        ]
+      },
+      {
+        "$type": "dict",
+        "value": [
+          [
+            "catalogs",
+            [
+              "testing",
+              "production"
+            ]
+          ],
+          [
+            "category",
+            "Browsers"
+          ],
+          [
+            "description",
+            "Invented ExampleBrowser package for tests."
+          ],
+          [
+            "developer",
+            "Example Co"
+          ],
+          [
+            "display_name",
+            "Example Browser"
+          ],
+          [
+            "installer_item_hash",
+            "0000000000000000000000000000000000000000000000000000000000000000"
+          ],
+          [
+            "installer_item_location",
+            "apps/ExampleBrowser-135.0.dmg"
+          ],
+          [
+            "installer_item_size",
+            1024
+          ],
+          [
+            "installer_type",
+            "copy_from_dmg"
+          ],
+          [
+            "installs",
+            [
+              {
+                "$type": "dict",
+                "value": [
+                  [
+                    "CFBundleShortVersionString",
+                    "135.0"
+                  ],
+                  [
+                    "path",
+                    "/Applications/ExampleBrowser.app"
+                  ],
+                  [
+                    "type",
+                    "application"
+                  ]
+                ]
+              }
+            ]
+          ],
+          [
+            "items_to_copy",
+            [
+              {
+                "$type": "dict",
+                "value": [
+                  [
+                    "destination_path",
+                    "/Applications"
+                  ],
+                  [
+                    "source_item",
+                    "ExampleBrowser.app"
+                  ]
+                ]
+              }
+            ]
+          ],
+          [
+            "loop_fingerprint",
+            "102736b1c8eed31a"
+          ],
+          [
+            "minimum_os_version",
+            "13.0"
+          ],
+          [
+            "name",
+            "ExampleBrowser"
+          ],
+          [
+            "unattended_install",
+            true
+          ],
+          [
+            "version",
+            "135.0"
+          ]
+        ]
+      },
+      {
+        "$type": "dict",
+        "value": [
+          [
+            "catalogs",
+            [
+              "testing",
+              "production"
+            ]
+          ],
+          [
+            "category",
+            "Creative"
+          ],
+          [
+            "description",
+            "Invented ExampleEditor package for tests."
+          ],
+          [
+            "developer",
+            "Example Co"
+          ],
+          [
+            "display_name",
+            "Example Editor"
+          ],
+          [
+            "installed_size",
+            {
+              "$type": "int",
+              "value": "9007199254740993"
+            }
+          ],
+          [
+            "installer_item_hash",
+            "0000000000000000000000000000000000000000000000000000000000000000"
+          ],
+          [
+            "installer_item_location",
+            "apps/ExampleEditor-2.10.dmg"
+          ],
+          [
+            "installer_item_size",
+            1024
+          ],
+          [
+            "installer_type",
+            "copy_from_dmg"
+          ],
+          [
+            "installs",
+            [
+              {
+                "$type": "dict",
+                "value": [
+                  [
+                    "CFBundleShortVersionString",
+                    "2.10"
+                  ],
+                  [
+                    "path",
+                    "/Applications/ExampleEditor.app"
+                  ],
+                  [
+                    "type",
+                    "application"
+                  ]
+                ]
+              }
+            ]
+          ],
+          [
+            "items_to_copy",
+            [
+              {
+                "$type": "dict",
+                "value": [
+                  [
+                    "destination_path",
+                    "/Applications"
+                  ],
+                  [
+                    "source_item",
+                    "ExampleEditor.app"
+                  ]
+                ]
+              }
+            ]
+          ],
+          [
+            "loop_fingerprint",
+            "d3a5ddde3618daf4"
+          ],
+          [
+            "minimum_os_version",
+            "13.0"
+          ],
+          [
+            "name",
+            "ExampleEditor"
+          ],
+          [
+            "postinstall_script",
+            "#!/bin/sh\necho \"done & <ok>\"\nexit 0\n"
+          ],
+          [
+            "requires",
+            [
+              "ExampleRuntime"
+            ]
+          ],
+          [
+            "unattended_install",
+            true
+          ],
+          [
+            "version",
+            "2.10"
+          ],
+          [
+            "x_unknown_site_key",
+            {
+              "$type": "dict",
+              "value": [
+                [
+                  "nested",
+                  [
+                    1,
+                    {
+                      "$type": "real",
+                      "value": "2.5"
+                    },
+                    "three"
+                  ]
+                ]
+              ]
+            }
+          ]
+        ]
+      },
+      {
+        "$type": "dict",
+        "value": [
+          [
+            "catalogs",
+            [
+              "testing",
+              "production"
+            ]
+          ],
+          [
+            "category",
+            "Creative"
+          ],
+          [
+            "description",
+            "Invented ExampleViewer package for tests."
+          ],
+          [
+            "developer",
+            "Example Co"
+          ],
+          [
+            "display_name",
+            "Example Viewer"
+          ],
+          [
+            "icon_data",
+            {
+              "$type": "data",
+              "value": "iVBORw0KGgoAAA=="
+            }
+          ],
+          [
+            "installer_item_hash",
+            "0000000000000000000000000000000000000000000000000000000000000000"
+          ],
+          [
+            "installer_item_location",
+            "apps/ExampleViewer-1.0.dmg"
+          ],
+          [
+            "installer_item_size",
+            1024
+          ],
+          [
+            "installer_type",
+            "copy_from_dmg"
+          ],
+          [
+            "installs",
+            [
+              {
+                "$type": "dict",
+                "value": [
+                  [
+                    "CFBundleShortVersionString",
+                    "1.0"
+                  ],
+                  [
+                    "path",
+                    "/Applications/ExampleViewer.app"
+                  ],
+                  [
+                    "type",
+                    "application"
+                  ]
+                ]
+              }
+            ]
+          ],
+          [
+            "items_to_copy",
+            [
+              {
+                "$type": "dict",
+                "value": [
+                  [
+                    "destination_path",
+                    "/Applications"
+                  ],
+                  [
+                    "source_item",
+                    "ExampleViewer.app"
+                  ]
+                ]
+              }
+            ]
+          ],
+          [
+            "loop_fingerprint",
+            "3a035900104867cc"
+          ],
+          [
+            "minimum_os_version",
+            "13.0"
+          ],
+          [
+            "name",
+            "ExampleViewer"
+          ],
+          [
+            "unattended_install",
+            true
+          ],
+          [
+            "version",
+            "1.0"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "name": "repo/catalogs/testing",
+    "tagged": [
+      {
+        "$type": "dict",
+        "value": [
+          [
+            "catalogs",
+            [
+              "testing"
+            ]
+          ],
+          [
+            "category",
+            "Utilities"
+          ],
+          [
+            "display_name",
+            "Example CLI"
+          ],
+          [
+            "installcheck_script",
+            "#!/bin/zsh\n# exit 0 means install is needed\n[[ -x /usr/local/bin/example ]] && exit 1\nexit 0\n"
+          ],
+          [
+            "installer_item_location",
+            "apps/ExampleCLI-3.0.pkg"
+          ],
+          [
+            "loop_fingerprint",
+            "1b4824bac3a13115"
+          ],
+          [
+            "minimum_os_version",
+            "13.0"
+          ],
+          [
+            "name",
+            "ExampleCLI"
+          ],
+          [
+            "receipts",
+            [
+              {
+                "$type": "dict",
+                "value": [
+                  [
+                    "packageid",
+                    "com.example.cli"
+                  ],
+                  [
+                    "version",
+                    "3.0"
+                  ]
+                ]
+              }
+            ]
+          ],
+          [
+            "unattended_install",
+            true
+          ],
+          [
+            "version",
+            "3.0"
+          ],
+          [
+            "x_unknown_site_key",
+            "keep-me"
+          ]
+        ]
+      },
+      {
+        "$type": "dict",
+        "value": [
+          [
+            "catalogs",
+            [
+              "testing",
+              "production"
+            ]
+          ],
+          [
+            "category",
+            "Utilities"
+          ],
+          [
+            "description",
+            "Invented ExampleRuntime package for tests."
+          ],
+          [
+            "developer",
+            "Example Co"
+          ],
+          [
+            "display_name",
+            "Example Runtime"
+          ],
+          [
+            "installer_item_hash",
+            "0000000000000000000000000000000000000000000000000000000000000000"
+          ],
+          [
+            "installer_item_location",
+            "apps/ExampleRuntime-5.0.pkg"
+          ],
+          [
+            "installer_item_size",
+            1024
+          ],
+          [
+            "loop_fingerprint",
+            "7fabe9110cb06d98"
+          ],
+          [
+            "minimum_os_version",
+            "13.0"
+          ],
+          [
+            "name",
+            "ExampleRuntime"
+          ],
+          [
+            "receipts",
+            [
+              {
+                "$type": "dict",
+                "value": [
+                  [
+                    "optional",
+                    false
+                  ],
+                  [
+                    "packageid",
+                    "com.example.exampleruntime"
+                  ],
+                  [
+                    "version",
+                    "5.0"
+                  ]
+                ]
+              }
+            ]
+          ],
+          [
+            "unattended_install",
+            true
+          ],
+          [
+            "version",
+            "5.0"
+          ]
+        ]
+      },
+      {
+        "$type": "dict",
+        "value": [
+          [
+            "catalogs",
+            [
+              "testing"
+            ]
+          ],
+          [
+            "category",
+            "Browsers"
+          ],
+          [
+            "description",
+            "Invented ExampleBrowser package for tests."
+          ],
+          [
+            "developer",
+            "Example Co"
+          ],
+          [
+            "display_name",
+            "Example Browser"
+          ],
+          [
+            "installer_item_hash",
+            "0000000000000000000000000000000000000000000000000000000000000000"
+          ],
+          [
+            "installer_item_location",
+            "apps/ExampleBrowser-136.0.dmg"
+          ],
+          [
+            "installer_item_size",
+            1024
+          ],
+          [
+            "installer_type",
+            "copy_from_dmg"
+          ],
+          [
+            "installs",
+            [
+              {
+                "$type": "dict",
+                "value": [
+                  [
+                    "CFBundleShortVersionString",
+                    "136.0"
+                  ],
+                  [
+                    "path",
+                    "/Applications/ExampleBrowser.app"
+                  ],
+                  [
+                    "type",
+                    "application"
+                  ]
+                ]
+              }
+            ]
+          ],
+          [
+            "items_to_copy",
+            [
+              {
+                "$type": "dict",
+                "value": [
+                  [
+                    "destination_path",
+                    "/Applications"
+                  ],
+                  [
+                    "source_item",
+                    "ExampleBrowser.app"
+                  ]
+                ]
+              }
+            ]
+          ],
+          [
+            "loop_fingerprint",
+            "9793b2b47d8c15c4"
+          ],
+          [
+            "minimum_os_version",
+            "13.0"
+          ],
+          [
+            "name",
+            "ExampleBrowser"
+          ],
+          [
+            "unattended_install",
+            true
+          ],
+          [
+            "version",
+            "136.0"
+          ]
+        ]
+      },
+      {
+        "$type": "dict",
+        "value": [
+          [
+            "catalogs",
+            [
+              "testing",
+              "production"
+            ]
+          ],
+          [
+            "category",
+            "Browsers"
+          ],
+          [
+            "description",
+            "Invented ExampleBrowser package for tests."
+          ],
+          [
+            "developer",
+            "Example Co"
+          ],
+          [
+            "display_name",
+            "Example Browser"
+          ],
+          [
+            "installer_item_hash",
+            "0000000000000000000000000000000000000000000000000000000000000000"
+          ],
+          [
+            "installer_item_location",
+            "apps/ExampleBrowser-135.0.dmg"
+          ],
+          [
+            "installer_item_size",
+            1024
+          ],
+          [
+            "installer_type",
+            "copy_from_dmg"
+          ],
+          [
+            "installs",
+            [
+              {
+                "$type": "dict",
+                "value": [
+                  [
+                    "CFBundleShortVersionString",
+                    "135.0"
+                  ],
+                  [
+                    "path",
+                    "/Applications/ExampleBrowser.app"
+                  ],
+                  [
+                    "type",
+                    "application"
+                  ]
+                ]
+              }
+            ]
+          ],
+          [
+            "items_to_copy",
+            [
+              {
+                "$type": "dict",
+                "value": [
+                  [
+                    "destination_path",
+                    "/Applications"
+                  ],
+                  [
+                    "source_item",
+                    "ExampleBrowser.app"
+                  ]
+                ]
+              }
+            ]
+          ],
+          [
+            "loop_fingerprint",
+            "102736b1c8eed31a"
+          ],
+          [
+            "minimum_os_version",
+            "13.0"
+          ],
+          [
+            "name",
+            "ExampleBrowser"
+          ],
+          [
+            "unattended_install",
+            true
+          ],
+          [
+            "version",
+            "135.0"
+          ]
+        ]
+      },
+      {
+        "$type": "dict",
+        "value": [
+          [
+            "catalogs",
+            [
+              "testing"
+            ]
+          ],
+          [
+            "category",
+            "Browsers"
+          ],
+          [
+            "description",
+            "Invented ExampleBrowser package for tests."
+          ],
+          [
+            "developer",
+            "Example Co"
+          ],
+          [
+            "display_name",
+            "Example Browser"
+          ],
+          [
+            "installer_item_hash",
+            "0000000000000000000000000000000000000000000000000000000000000000"
+          ],
+          [
+            "installer_item_location",
+            "apps/ExampleBrowser-136.0.dmg"
+          ],
+          [
+            "installer_item_size",
+            1024
+          ],
+          [
+            "installer_type",
+            "copy_from_dmg"
+          ],
+          [
+            "installs",
+            [
+              {
+                "$type": "dict",
+                "value": [
+                  [
+                    "CFBundleShortVersionString",
+                    "136.0"
+                  ],
+                  [
+                    "path",
+                    "/Applications/ExampleBrowser.app"
+                  ],
+                  [
+                    "type",
+                    "application"
+                  ]
+                ]
+              }
+            ]
+          ],
+          [
+            "items_to_copy",
+            [
+              {
+                "$type": "dict",
+                "value": [
+                  [
+                    "destination_path",
+                    "/Applications"
+                  ],
+                  [
+                    "source_item",
+                    "ExampleBrowser.app"
+                  ]
+                ]
+              }
+            ]
+          ],
+          [
+            "loop_fingerprint",
+            "9793b2b47d8c15c4"
+          ],
+          [
+            "minimum_os_version",
+            "13.0"
+          ],
+          [
+            "name",
+            "ExampleBrowser"
+          ],
+          [
+            "unattended_install",
+            true
+          ],
+          [
+            "version",
+            "136.0"
+          ]
+        ]
+      },
+      {
+        "$type": "dict",
+        "value": [
+          [
+            "catalogs",
+            [
+              "testing",
+              "production"
+            ]
+          ],
+          [
+            "category",
+            "Creative"
+          ],
+          [
+            "description",
+            "Invented ExampleEditor package for tests."
+          ],
+          [
+            "developer",
+            "Example Co"
+          ],
+          [
+            "display_name",
+            "Example Editor"
+          ],
+          [
+            "installed_size",
+            {
+              "$type": "int",
+              "value": "9007199254740993"
+            }
+          ],
+          [
+            "installer_item_hash",
+            "0000000000000000000000000000000000000000000000000000000000000000"
+          ],
+          [
+            "installer_item_location",
+            "apps/ExampleEditor-2.10.dmg"
+          ],
+          [
+            "installer_item_size",
+            1024
+          ],
+          [
+            "installer_type",
+            "copy_from_dmg"
+          ],
+          [
+            "installs",
+            [
+              {
+                "$type": "dict",
+                "value": [
+                  [
+                    "CFBundleShortVersionString",
+                    "2.10"
+                  ],
+                  [
+                    "path",
+                    "/Applications/ExampleEditor.app"
+                  ],
+                  [
+                    "type",
+                    "application"
+                  ]
+                ]
+              }
+            ]
+          ],
+          [
+            "items_to_copy",
+            [
+              {
+                "$type": "dict",
+                "value": [
+                  [
+                    "destination_path",
+                    "/Applications"
+                  ],
+                  [
+                    "source_item",
+                    "ExampleEditor.app"
+                  ]
+                ]
+              }
+            ]
+          ],
+          [
+            "loop_fingerprint",
+            "d3a5ddde3618daf4"
+          ],
+          [
+            "minimum_os_version",
+            "13.0"
+          ],
+          [
+            "name",
+            "ExampleEditor"
+          ],
+          [
+            "postinstall_script",
+            "#!/bin/sh\necho \"done & <ok>\"\nexit 0\n"
+          ],
+          [
+            "requires",
+            [
+              "ExampleRuntime"
+            ]
+          ],
+          [
+            "unattended_install",
+            true
+          ],
+          [
+            "version",
+            "2.10"
+          ],
+          [
+            "x_unknown_site_key",
+            {
+              "$type": "dict",
+              "value": [
+                [
+                  "nested",
+                  [
+                    1,
+                    {
+                      "$type": "real",
+                      "value": "2.5"
+                    },
+                    "three"
+                  ]
+                ]
+              ]
+            }
+          ]
+        ]
+      },
+      {
+        "$type": "dict",
+        "value": [
+          [
+            "catalogs",
+            [
+              "testing",
+              "production"
+            ]
+          ],
+          [
+            "category",
+            "Creative"
+          ],
+          [
+            "description",
+            "Invented ExampleViewer package for tests."
+          ],
+          [
+            "developer",
+            "Example Co"
+          ],
+          [
+            "display_name",
+            "Example Viewer"
+          ],
+          [
+            "icon_data",
+            {
+              "$type": "data",
+              "value": "iVBORw0KGgoAAA=="
+            }
+          ],
+          [
+            "installer_item_hash",
+            "0000000000000000000000000000000000000000000000000000000000000000"
+          ],
+          [
+            "installer_item_location",
+            "apps/ExampleViewer-1.0.dmg"
+          ],
+          [
+            "installer_item_size",
+            1024
+          ],
+          [
+            "installer_type",
+            "copy_from_dmg"
+          ],
+          [
+            "installs",
+            [
+              {
+                "$type": "dict",
+                "value": [
+                  [
+                    "CFBundleShortVersionString",
+                    "1.0"
+                  ],
+                  [
+                    "path",
+                    "/Applications/ExampleViewer.app"
+                  ],
+                  [
+                    "type",
+                    "application"
+                  ]
+                ]
+              }
+            ]
+          ],
+          [
+            "items_to_copy",
+            [
+              {
+                "$type": "dict",
+                "value": [
+                  [
+                    "destination_path",
+                    "/Applications"
+                  ],
+                  [
+                    "source_item",
+                    "ExampleViewer.app"
+                  ]
+                ]
+              }
+            ]
+          ],
+          [
+            "loop_fingerprint",
+            "3a035900104867cc"
+          ],
+          [
+            "minimum_os_version",
+            "13.0"
+          ],
+          [
+            "name",
+            "ExampleViewer"
+          ],
+          [
+            "unattended_install",
+            true
+          ],
+          [
+            "version",
+            "1.0"
+          ]
+        ]
+      },
+      {
+        "$type": "dict",
+        "value": [
+          [
+            "catalogs",
+            [
+              "testing"
+            ]
+          ],
+          [
+            "category",
+            "Creative"
+          ],
+          [
+            "description",
+            "Invented ExampleEditorPlugin package for tests."
+          ],
+          [
+            "developer",
+            "Example Co"
+          ],
+          [
+            "display_name",
+            "Example EditorPlugin"
+          ],
+          [
+            "installer_item_hash",
+            "0000000000000000000000000000000000000000000000000000000000000000"
+          ],
+          [
+            "installer_item_location",
+            "apps/ExampleEditorPlugin-1.0.pkg"
+          ],
+          [
+            "installer_item_size",
+            1024
+          ],
+          [
+            "loop_fingerprint",
+            "65be3eba0a30ab01"
+          ],
+          [
+            "minimum_os_version",
+            "13.0"
+          ],
+          [
+            "name",
+            "ExampleEditorPlugin"
+          ],
+          [
+            "receipts",
+            [
+              {
+                "$type": "dict",
+                "value": [
+                  [
+                    "optional",
+                    false
+                  ],
+                  [
+                    "packageid",
+                    "com.example.exampleeditorplugin"
+                  ],
+                  [
+                    "version",
+                    "1.0"
+                  ]
+                ]
+              }
+            ]
+          ],
+          [
+            "unattended_install",
+            true
+          ],
+          [
+            "update_for",
+            [
+              "ExampleEditor"
+            ]
+          ],
+          [
+            "version",
+            "1.0"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "name": "repo/manifests/computers/EXAMPLE-0001",
+    "tagged": {
+      "$type": "dict",
+      "value": [
+        [
+          "catalogs",
+          [
+            "testing",
+            "production"
+          ]
+        ],
+        [
+          "included_manifests",
+          [
+            "groups/design-lab"
+          ]
+        ]
+      ]
+    }
+  },
+  {
+    "name": "repo/manifests/groups/broken-refs",
+    "tagged": {
+      "$type": "dict",
+      "value": [
+        [
+          "catalogs",
+          [
+            "testing"
+          ]
+        ],
+        [
+          "included_manifests",
+          [
+            "groups/does-not-exist"
+          ]
+        ],
+        [
+          "managed_installs",
+          [
+            "ExampleMissing"
+          ]
+        ]
+      ]
+    }
+  },
+  {
+    "name": "repo/manifests/groups/design-lab",
+    "tagged": {
+      "$type": "dict",
+      "value": [
+        [
+          "catalogs",
+          [
+            "testing",
+            "production"
+          ]
+        ],
+        [
+          "included_manifests",
+          [
+            "site_default"
+          ]
+        ],
+        [
+          "managed_installs",
+          [
+            "ExampleEditor",
+            "ExampleViewer"
+          ]
+        ],
+        [
+          "optional_installs",
+          [
+            "ExampleCLI"
+          ]
+        ],
+        [
+          "managed_uninstalls",
+          [
+            "ExampleLegacy"
+          ]
+        ],
+        [
+          "conditional_items",
+          [
+            {
+              "$type": "dict",
+              "value": [
+                [
+                  "condition",
+                  "machine_type == \"laptop\" AND os_vers_major >= 14"
+                ],
+                [
+                  "managed_installs",
+                  [
+                    "ExampleEditorPlugin"
+                  ]
+                ]
+              ]
+            }
+          ]
+        ]
+      ]
+    }
+  },
+  {
+    "name": "repo/manifests/groups/loop-a",
+    "tagged": {
+      "$type": "dict",
+      "value": [
+        [
+          "catalogs",
+          [
+            "testing"
+          ]
+        ],
+        [
+          "included_manifests",
+          [
+            "groups/loop-b"
+          ]
+        ]
+      ]
+    }
+  },
+  {
+    "name": "repo/manifests/groups/loop-b",
+    "tagged": {
+      "$type": "dict",
+      "value": [
+        [
+          "catalogs",
+          [
+            "testing"
+          ]
+        ],
+        [
+          "included_manifests",
+          [
+            "groups/loop-a"
+          ]
+        ]
+      ]
+    }
+  },
+  {
+    "name": "repo/manifests/site_default",
+    "tagged": {
+      "$type": "dict",
+      "value": [
+        [
+          "catalogs",
+          [
+            "production"
+          ]
+        ],
+        [
+          "managed_installs",
+          [
+            "ExampleBrowser",
+            "ExampleRuntime"
+          ]
+        ]
+      ]
+    }
+  },
+  {
+    "name": "repo/pkgsinfo/apps/browsers/ExampleBrowser-135.0.plist",
+    "tagged": {
+      "$type": "dict",
+      "value": [
+        [
+          "name",
+          "ExampleBrowser"
+        ],
+        [
+          "display_name",
+          "Example Browser"
+        ],
+        [
+          "version",
+          "135.0"
+        ],
+        [
+          "catalogs",
+          [
+            "testing",
+            "production"
+          ]
+        ],
+        [
+          "category",
+          "Browsers"
+        ],
+        [
+          "developer",
+          "Example Co"
+        ],
+        [
+          "description",
+          "Invented ExampleBrowser package for tests."
+        ],
+        [
+          "installer_item_location",
+          "apps/ExampleBrowser-135.0.dmg"
+        ],
+        [
+          "installer_item_hash",
+          "0000000000000000000000000000000000000000000000000000000000000000"
+        ],
+        [
+          "installer_item_size",
+          1024
+        ],
+        [
+          "minimum_os_version",
+          "13.0"
+        ],
+        [
+          "unattended_install",
+          true
+        ],
+        [
+          "_metadata",
+          {
+            "$type": "dict",
+            "value": [
+              [
+                "created_by",
+                "fixture"
+              ],
+              [
+                "creation_date",
+                {
+                  "$type": "date",
+                  "value": "2026-10-20T09:30:00"
+                }
+              ]
+            ]
+          }
+        ],
+        [
+          "installer_type",
+          "copy_from_dmg"
+        ],
+        [
+          "items_to_copy",
+          [
+            {
+              "$type": "dict",
+              "value": [
+                [
+                  "source_item",
+                  "ExampleBrowser.app"
+                ],
+                [
+                  "destination_path",
+                  "/Applications"
+                ]
+              ]
+            }
+          ]
+        ],
+        [
+          "installs",
+          [
+            {
+              "$type": "dict",
+              "value": [
+                [
+                  "type",
+                  "application"
+                ],
+                [
+                  "path",
+                  "/Applications/ExampleBrowser.app"
+                ],
+                [
+                  "CFBundleShortVersionString",
+                  "135.0"
+                ]
+              ]
+            }
+          ]
+        ]
+      ]
+    }
+  },
+  {
+    "name": "repo/pkgsinfo/apps/browsers/ExampleBrowser-136.0.plist",
+    "tagged": {
+      "$type": "dict",
+      "value": [
+        [
+          "name",
+          "ExampleBrowser"
+        ],
+        [
+          "display_name",
+          "Example Browser"
+        ],
+        [
+          "version",
+          "136.0"
+        ],
+        [
+          "catalogs",
+          [
+            "testing"
+          ]
+        ],
+        [
+          "category",
+          "Browsers"
+        ],
+        [
+          "developer",
+          "Example Co"
+        ],
+        [
+          "description",
+          "Invented ExampleBrowser package for tests."
+        ],
+        [
+          "installer_item_location",
+          "apps/ExampleBrowser-136.0.dmg"
+        ],
+        [
+          "installer_item_hash",
+          "0000000000000000000000000000000000000000000000000000000000000000"
+        ],
+        [
+          "installer_item_size",
+          1024
+        ],
+        [
+          "minimum_os_version",
+          "13.0"
+        ],
+        [
+          "unattended_install",
+          true
+        ],
+        [
+          "_metadata",
+          {
+            "$type": "dict",
+            "value": [
+              [
+                "created_by",
+                "fixture"
+              ],
+              [
+                "creation_date",
+                {
+                  "$type": "date",
+                  "value": "2026-10-20T09:30:00"
+                }
+              ]
+            ]
+          }
+        ],
+        [
+          "installer_type",
+          "copy_from_dmg"
+        ],
+        [
+          "items_to_copy",
+          [
+            {
+              "$type": "dict",
+              "value": [
+                [
+                  "source_item",
+                  "ExampleBrowser.app"
+                ],
+                [
+                  "destination_path",
+                  "/Applications"
+                ]
+              ]
+            }
+          ]
+        ],
+        [
+          "installs",
+          [
+            {
+              "$type": "dict",
+              "value": [
+                [
+                  "type",
+                  "application"
+                ],
+                [
+                  "path",
+                  "/Applications/ExampleBrowser.app"
+                ],
+                [
+                  "CFBundleShortVersionString",
+                  "136.0"
+                ]
+              ]
+            }
+          ]
+        ]
+      ]
+    }
+  },
+  {
+    "name": "repo/pkgsinfo/apps/browsers/duplicates/ExampleBrowser-136.0.plist",
+    "tagged": {
+      "$type": "dict",
+      "value": [
+        [
+          "name",
+          "ExampleBrowser"
+        ],
+        [
+          "display_name",
+          "Example Browser"
+        ],
+        [
+          "version",
+          "136.0"
+        ],
+        [
+          "catalogs",
+          [
+            "testing"
+          ]
+        ],
+        [
+          "category",
+          "Browsers"
+        ],
+        [
+          "developer",
+          "Example Co"
+        ],
+        [
+          "description",
+          "Invented ExampleBrowser package for tests."
+        ],
+        [
+          "installer_item_location",
+          "apps/ExampleBrowser-136.0.dmg"
+        ],
+        [
+          "installer_item_hash",
+          "0000000000000000000000000000000000000000000000000000000000000000"
+        ],
+        [
+          "installer_item_size",
+          1024
+        ],
+        [
+          "minimum_os_version",
+          "13.0"
+        ],
+        [
+          "unattended_install",
+          true
+        ],
+        [
+          "_metadata",
+          {
+            "$type": "dict",
+            "value": [
+              [
+                "created_by",
+                "fixture"
+              ],
+              [
+                "creation_date",
+                {
+                  "$type": "date",
+                  "value": "2026-10-20T09:30:00"
+                }
+              ]
+            ]
+          }
+        ],
+        [
+          "installer_type",
+          "copy_from_dmg"
+        ],
+        [
+          "items_to_copy",
+          [
+            {
+              "$type": "dict",
+              "value": [
+                [
+                  "source_item",
+                  "ExampleBrowser.app"
+                ],
+                [
+                  "destination_path",
+                  "/Applications"
+                ]
+              ]
+            }
+          ]
+        ],
+        [
+          "installs",
+          [
+            {
+              "$type": "dict",
+              "value": [
+                [
+                  "type",
+                  "application"
+                ],
+                [
+                  "path",
+                  "/Applications/ExampleBrowser.app"
+                ],
+                [
+                  "CFBundleShortVersionString",
+                  "136.0"
+                ]
+              ]
+            }
+          ]
+        ],
+        [
+          "notes",
+          "Duplicate on purpose."
+        ]
+      ]
+    }
+  },
+  {
+    "name": "repo/pkgsinfo/apps/creative/ExampleEditor-2.10.plist",
+    "tagged": {
+      "$type": "dict",
+      "value": [
+        [
+          "name",
+          "ExampleEditor"
+        ],
+        [
+          "display_name",
+          "Example Editor"
+        ],
+        [
+          "version",
+          "2.10"
+        ],
+        [
+          "catalogs",
+          [
+            "testing",
+            "production"
+          ]
+        ],
+        [
+          "category",
+          "Creative"
+        ],
+        [
+          "developer",
+          "Example Co"
+        ],
+        [
+          "description",
+          "Invented ExampleEditor package for tests."
+        ],
+        [
+          "installer_item_location",
+          "apps/ExampleEditor-2.10.dmg"
+        ],
+        [
+          "installer_item_hash",
+          "0000000000000000000000000000000000000000000000000000000000000000"
+        ],
+        [
+          "installer_item_size",
+          1024
+        ],
+        [
+          "minimum_os_version",
+          "13.0"
+        ],
+        [
+          "unattended_install",
+          true
+        ],
+        [
+          "_metadata",
+          {
+            "$type": "dict",
+            "value": [
+              [
+                "created_by",
+                "fixture"
+              ],
+              [
+                "creation_date",
+                {
+                  "$type": "date",
+                  "value": "2026-10-20T09:30:00"
+                }
+              ]
+            ]
+          }
+        ],
+        [
+          "installer_type",
+          "copy_from_dmg"
+        ],
+        [
+          "items_to_copy",
+          [
+            {
+              "$type": "dict",
+              "value": [
+                [
+                  "source_item",
+                  "ExampleEditor.app"
+                ],
+                [
+                  "destination_path",
+                  "/Applications"
+                ]
+              ]
+            }
+          ]
+        ],
+        [
+          "installs",
+          [
+            {
+              "$type": "dict",
+              "value": [
+                [
+                  "type",
+                  "application"
+                ],
+                [
+                  "path",
+                  "/Applications/ExampleEditor.app"
+                ],
+                [
+                  "CFBundleShortVersionString",
+                  "2.10"
+                ]
+              ]
+            }
+          ]
+        ],
+        [
+          "requires",
+          [
+            "ExampleRuntime"
+          ]
+        ],
+        [
+          "postinstall_script",
+          "#!/bin/sh\necho \"done & <ok>\"\nexit 0\n"
+        ],
+        [
+          "installed_size",
+          {
+            "$type": "int",
+            "value": "9007199254740993"
+          }
+        ],
+        [
+          "x_unknown_site_key",
+          {
+            "$type": "dict",
+            "value": [
+              [
+                "nested",
+                [
+                  1,
+                  {
+                    "$type": "real",
+                    "value": "2.5"
+                  },
+                  "three"
+                ]
+              ]
+            ]
+          }
+        ]
+      ]
+    }
+  },
+  {
+    "name": "repo/pkgsinfo/apps/creative/ExampleEditorPlugin-1.0.plist",
+    "tagged": {
+      "$type": "dict",
+      "value": [
+        [
+          "name",
+          "ExampleEditorPlugin"
+        ],
+        [
+          "display_name",
+          "Example EditorPlugin"
+        ],
+        [
+          "version",
+          "1.0"
+        ],
+        [
+          "catalogs",
+          [
+            "testing"
+          ]
+        ],
+        [
+          "category",
+          "Creative"
+        ],
+        [
+          "developer",
+          "Example Co"
+        ],
+        [
+          "description",
+          "Invented ExampleEditorPlugin package for tests."
+        ],
+        [
+          "installer_item_location",
+          "apps/ExampleEditorPlugin-1.0.pkg"
+        ],
+        [
+          "installer_item_hash",
+          "0000000000000000000000000000000000000000000000000000000000000000"
+        ],
+        [
+          "installer_item_size",
+          1024
+        ],
+        [
+          "minimum_os_version",
+          "13.0"
+        ],
+        [
+          "unattended_install",
+          true
+        ],
+        [
+          "_metadata",
+          {
+            "$type": "dict",
+            "value": [
+              [
+                "created_by",
+                "fixture"
+              ],
+              [
+                "creation_date",
+                {
+                  "$type": "date",
+                  "value": "2026-10-20T09:30:00"
+                }
+              ]
+            ]
+          }
+        ],
+        [
+          "receipts",
+          [
+            {
+              "$type": "dict",
+              "value": [
+                [
+                  "packageid",
+                  "com.example.exampleeditorplugin"
+                ],
+                [
+                  "version",
+                  "1.0"
+                ],
+                [
+                  "optional",
+                  false
+                ]
+              ]
+            }
+          ]
+        ],
+        [
+          "update_for",
+          [
+            "ExampleEditor"
+          ]
+        ]
+      ]
+    }
+  },
+  {
+    "name": "repo/pkgsinfo/apps/creative/ExampleViewer-1.0.plist",
+    "tagged": {
+      "$type": "dict",
+      "value": [
+        [
+          "name",
+          "ExampleViewer"
+        ],
+        [
+          "display_name",
+          "Example Viewer"
+        ],
+        [
+          "version",
+          "1.0"
+        ],
+        [
+          "catalogs",
+          [
+            "testing",
+            "production"
+          ]
+        ],
+        [
+          "category",
+          "Creative"
+        ],
+        [
+          "developer",
+          "Example Co"
+        ],
+        [
+          "description",
+          "Invented ExampleViewer package for tests."
+        ],
+        [
+          "installer_item_location",
+          "apps/ExampleViewer-1.0.dmg"
+        ],
+        [
+          "installer_item_hash",
+          "0000000000000000000000000000000000000000000000000000000000000000"
+        ],
+        [
+          "installer_item_size",
+          1024
+        ],
+        [
+          "minimum_os_version",
+          "13.0"
+        ],
+        [
+          "unattended_install",
+          true
+        ],
+        [
+          "_metadata",
+          {
+            "$type": "dict",
+            "value": [
+              [
+                "created_by",
+                "fixture"
+              ],
+              [
+                "creation_date",
+                {
+                  "$type": "date",
+                  "value": "2026-10-20T09:30:00"
+                }
+              ]
+            ]
+          }
+        ],
+        [
+          "installer_type",
+          "copy_from_dmg"
+        ],
+        [
+          "items_to_copy",
+          [
+            {
+              "$type": "dict",
+              "value": [
+                [
+                  "source_item",
+                  "ExampleViewer.app"
+                ],
+                [
+                  "destination_path",
+                  "/Applications"
+                ]
+              ]
+            }
+          ]
+        ],
+        [
+          "installs",
+          [
+            {
+              "$type": "dict",
+              "value": [
+                [
+                  "type",
+                  "application"
+                ],
+                [
+                  "path",
+                  "/Applications/ExampleViewer.app"
+                ],
+                [
+                  "CFBundleShortVersionString",
+                  "1.0"
+                ]
+              ]
+            }
+          ]
+        ],
+        [
+          "icon_data",
+          {
+            "$type": "data",
+            "value": "iVBORw0KGgoAAA=="
+          }
+        ]
+      ]
+    }
+  },
+  {
+    "name": "repo/pkgsinfo/invalid/NotADict-1.0.plist",
+    "tagged": [
+      "not",
+      "a",
+      "dict"
+    ]
+  },
+  {
+    "name": "repo/pkgsinfo/tools/ExampleCLI-3.0.yaml",
+    "tagged": {
+      "$type": "dict",
+      "value": [
+        [
+          "name",
+          "ExampleCLI"
+        ],
+        [
+          "display_name",
+          "Example CLI"
+        ],
+        [
+          "version",
+          "3.0"
+        ],
+        [
+          "catalogs",
+          [
+            "testing"
+          ]
+        ],
+        [
+          "category",
+          "Utilities"
+        ],
+        [
+          "installer_item_location",
+          "apps/ExampleCLI-3.0.pkg"
+        ],
+        [
+          "receipts",
+          [
+            {
+              "$type": "dict",
+              "value": [
+                [
+                  "packageid",
+                  "com.example.cli"
+                ],
+                [
+                  "version",
+                  "3.0"
+                ]
+              ]
+            }
+          ]
+        ],
+        [
+          "minimum_os_version",
+          "13.0"
+        ],
+        [
+          "unattended_install",
+          true
+        ],
+        [
+          "installcheck_script",
+          "#!/bin/zsh\n# exit 0 means install is needed\n[[ -x /usr/local/bin/example ]] && exit 1\nexit 0\n"
+        ],
+        [
+          "x_unknown_site_key",
+          "keep-me"
+        ]
+      ]
+    }
+  },
+  {
+    "name": "repo/pkgsinfo/tools/ExampleRuntime-5.0.plist",
+    "tagged": {
+      "$type": "dict",
+      "value": [
+        [
+          "name",
+          "ExampleRuntime"
+        ],
+        [
+          "display_name",
+          "Example Runtime"
+        ],
+        [
+          "version",
+          "5.0"
+        ],
+        [
+          "catalogs",
+          [
+            "testing",
+            "production"
+          ]
+        ],
+        [
+          "category",
+          "Utilities"
+        ],
+        [
+          "developer",
+          "Example Co"
+        ],
+        [
+          "description",
+          "Invented ExampleRuntime package for tests."
+        ],
+        [
+          "installer_item_location",
+          "apps/ExampleRuntime-5.0.pkg"
+        ],
+        [
+          "installer_item_hash",
+          "0000000000000000000000000000000000000000000000000000000000000000"
+        ],
+        [
+          "installer_item_size",
+          1024
+        ],
+        [
+          "minimum_os_version",
+          "13.0"
+        ],
+        [
+          "unattended_install",
+          true
+        ],
+        [
+          "_metadata",
+          {
+            "$type": "dict",
+            "value": [
+              [
+                "created_by",
+                "fixture"
+              ],
+              [
+                "creation_date",
+                {
+                  "$type": "date",
+                  "value": "2026-10-20T09:30:00"
+                }
+              ]
+            ]
+          }
+        ],
+        [
+          "receipts",
+          [
+            {
+              "$type": "dict",
+              "value": [
+                [
+                  "packageid",
+                  "com.example.exampleruntime"
+                ],
+                [
+                  "version",
+                  "5.0"
+                ],
+                [
+                  "optional",
+                  false
+                ]
+              ]
+            }
+          ]
+        ]
+      ]
+    }
+  },
+  {
+    "name": "edge/large-integers",
+    "tagged": {
+      "$type": "dict",
+      "value": [
+        [
+          "big",
+          {
+            "$type": "int",
+            "value": "9223372036854775807"
+          }
+        ],
+        [
+          "negative",
+          {
+            "$type": "int",
+            "value": "-1152921504606846976"
+          }
+        ],
+        [
+          "safe",
+          9007199254740991
+        ]
+      ]
+    }
+  },
+  {
+    "name": "edge/reals",
+    "tagged": {
+      "$type": "dict",
+      "value": [
+        [
+          "whole",
+          {
+            "$type": "real",
+            "value": "2.0"
+          }
+        ],
+        [
+          "fraction",
+          {
+            "$type": "real",
+            "value": "2.5"
+          }
+        ],
+        [
+          "tiny",
+          {
+            "$type": "real",
+            "value": "1e-300"
+          }
+        ],
+        [
+          "negative",
+          {
+            "$type": "real",
+            "value": "-0.0"
+          }
+        ]
+      ]
+    }
+  },
+  {
+    "name": "edge/dates",
+    "tagged": {
+      "$type": "dict",
+      "value": [
+        [
+          "date",
+          {
+            "$type": "date",
+            "value": "2026-10-20T09:30:00"
+          }
+        ],
+        [
+          "day",
+          {
+            "$type": "day",
+            "value": "2026-10-20"
+          }
+        ]
+      ]
+    }
+  },
+  {
+    "name": "edge/data",
+    "tagged": {
+      "$type": "dict",
+      "value": [
+        [
+          "empty",
+          {
+            "$type": "data",
+            "value": ""
+          }
+        ],
+        [
+          "bytes",
+          {
+            "$type": "data",
+            "value": "AAECAwQFBgc="
+          }
+        ]
+      ]
+    }
+  },
+  {
+    "name": "edge/key-order",
+    "tagged": {
+      "$type": "dict",
+      "value": [
+        [
+          "10",
+          "ten"
+        ],
+        [
+          "a",
+          "a"
+        ],
+        [
+          "2",
+          "two"
+        ],
+        [
+          "$type",
+          "not a tag"
+        ]
+      ]
+    }
+  },
+  {
+    "name": "edge/nesting",
+    "tagged": {
+      "$type": "dict",
+      "value": [
+        [
+          "list",
+          [
+            [
+              1,
+              [
+                2,
+                [
+                  3
+                ]
+              ]
+            ],
+            {
+              "$type": "dict",
+              "value": [
+                [
+                  "k",
+                  null
+                ]
+              ]
+            }
+          ]
+        ],
+        [
+          "empty",
+          {
+            "$type": "dict",
+            "value": []
+          }
+        ],
+        [
+          "none",
+          []
+        ]
+      ]
+    }
+  }
+]
