@@ -110,3 +110,37 @@ class ConditionInfo(BaseModel):
     column: int | None
     facts: list[str]
     unknown_facts: list[str]
+
+
+class ManifestItem(BaseModel):
+    name: str
+    package: str | None = Field(description="The package this item resolves to; null when missing")
+
+
+class ManifestSection(BaseModel):
+    field: str
+    items: list[ManifestItem]
+
+
+class IncludedManifest(BaseModel):
+    name: str
+    path: str | None = Field(description="Path of the included manifest; null when missing")
+
+
+class ConditionalBlock(BaseModel):
+    condition: ConditionInfo | None
+    includes: list[IncludedManifest]
+    sections: list[ManifestSection]
+
+
+class ManifestView(BaseModel):
+    path: str
+    name: str
+    status: str
+    diagnostic: Diagnostic | None
+    catalogs: list[str]
+    includes: list[IncludedManifest]
+    sections: list[ManifestSection]
+    conditional: list[ConditionalBlock]
+    included_by: list[str]
+    issues: list[ValidationIssue]

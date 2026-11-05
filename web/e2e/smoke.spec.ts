@@ -24,3 +24,17 @@ test("a deep link opens one version of a package", async ({ page }) => {
   await page.goto("/?path=pkgsinfo%2Fapps%2Fbrowsers%2FExampleBrowser-135.0.plist");
   await expect(page.getByRole("combobox", { name: "Version" })).toHaveValue("pkgsinfo/apps/browsers/ExampleBrowser-135.0.plist");
 });
+
+test("reads manifests, follows includes, and shows conditions as rules", async ({ page }) => {
+  await page.goto("/?area=manifests&manifest=manifests%2Fgroups%2Fdesign-lab");
+  await expect(page.getByRole("heading", { level: 2, name: "groups/design-lab" })).toBeVisible();
+  await expect(page.getByText('machine type is "laptop" and macOS major version is at least 14')).toBeVisible();
+  await expect(page.getByText("No such package")).toBeVisible();
+  await page.getByRole("article").getByRole("button", { name: "site_default", exact: true }).click();
+  await expect(page.getByRole("heading", { level: 2, name: "site_default" })).toBeVisible();
+  await expect(page).toHaveURL(/manifest=manifests%2Fsite_default/);
+  await page.goBack();
+  await expect(page.getByRole("heading", { level: 2, name: "groups/design-lab" })).toBeVisible();
+  await page.getByRole("button", { name: "ExampleEditor", exact: true }).click();
+  await expect(page.getByRole("heading", { level: 2, name: "ExampleEditor" })).toBeVisible();
+});

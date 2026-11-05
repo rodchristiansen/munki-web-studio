@@ -98,6 +98,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/repositories/{repo_id}/manifests/{path}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Manifest */
+        get: operations["get_manifest_api_repositories__repo_id__manifests__path__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/repositories/{repo_id}/objects": {
         parameters: {
             query?: never;
@@ -244,6 +261,14 @@ export interface components {
             /** Unknown Facts */
             unknown_facts: string[];
         };
+        /** ConditionalBlock */
+        ConditionalBlock: {
+            condition: components["schemas"]["ConditionInfo"] | null;
+            /** Includes */
+            includes: components["schemas"]["IncludedManifest"][];
+            /** Sections */
+            sections: components["schemas"]["ManifestSection"][];
+        };
         /** Diagnostic */
         Diagnostic: {
             /** Column */
@@ -266,6 +291,55 @@ export interface components {
             status: string;
             /** Version */
             version: string;
+        };
+        /** IncludedManifest */
+        IncludedManifest: {
+            /** Name */
+            name: string;
+            /**
+             * Path
+             * @description Path of the included manifest; null when missing
+             */
+            path: string | null;
+        };
+        /** ManifestItem */
+        ManifestItem: {
+            /** Name */
+            name: string;
+            /**
+             * Package
+             * @description The package this item resolves to; null when missing
+             */
+            package: string | null;
+        };
+        /** ManifestSection */
+        ManifestSection: {
+            /** Field */
+            field: string;
+            /** Items */
+            items: components["schemas"]["ManifestItem"][];
+        };
+        /** ManifestView */
+        ManifestView: {
+            /** Catalogs */
+            catalogs: string[];
+            /** Conditional */
+            conditional: components["schemas"]["ConditionalBlock"][];
+            diagnostic: components["schemas"]["Diagnostic"] | null;
+            /** Included By */
+            included_by: string[];
+            /** Includes */
+            includes: components["schemas"]["IncludedManifest"][];
+            /** Issues */
+            issues: components["schemas"]["ValidationIssue"][];
+            /** Name */
+            name: string;
+            /** Path */
+            path: string;
+            /** Sections */
+            sections: components["schemas"]["ManifestSection"][];
+            /** Status */
+            status: string;
         };
         /** ObjectDetail */
         ObjectDetail: {
@@ -585,6 +659,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConditionInfo"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_manifest_api_repositories__repo_id__manifests__path__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                repo_id: string;
+                path: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManifestView"];
                 };
             };
             /** @description Validation Error */

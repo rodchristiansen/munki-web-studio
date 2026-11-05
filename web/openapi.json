@@ -85,6 +85,41 @@
         "title": "ConditionInfo",
         "type": "object"
       },
+      "ConditionalBlock": {
+        "properties": {
+          "condition": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConditionInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "includes": {
+            "items": {
+              "$ref": "#/components/schemas/IncludedManifest"
+            },
+            "title": "Includes",
+            "type": "array"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/ManifestSection"
+            },
+            "title": "Sections",
+            "type": "array"
+          }
+        },
+        "required": [
+          "condition",
+          "includes",
+          "sections"
+        ],
+        "title": "ConditionalBlock",
+        "type": "object"
+      },
       "Diagnostic": {
         "properties": {
           "column": {
@@ -154,6 +189,161 @@
           "version"
         ],
         "title": "Health",
+        "type": "object"
+      },
+      "IncludedManifest": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Path of the included manifest; null when missing",
+            "title": "Path"
+          }
+        },
+        "required": [
+          "name",
+          "path"
+        ],
+        "title": "IncludedManifest",
+        "type": "object"
+      },
+      "ManifestItem": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "package": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The package this item resolves to; null when missing",
+            "title": "Package"
+          }
+        },
+        "required": [
+          "name",
+          "package"
+        ],
+        "title": "ManifestItem",
+        "type": "object"
+      },
+      "ManifestSection": {
+        "properties": {
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ManifestItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "field",
+          "items"
+        ],
+        "title": "ManifestSection",
+        "type": "object"
+      },
+      "ManifestView": {
+        "properties": {
+          "catalogs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Catalogs",
+            "type": "array"
+          },
+          "conditional": {
+            "items": {
+              "$ref": "#/components/schemas/ConditionalBlock"
+            },
+            "title": "Conditional",
+            "type": "array"
+          },
+          "diagnostic": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Diagnostic"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "included_by": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Included By",
+            "type": "array"
+          },
+          "includes": {
+            "items": {
+              "$ref": "#/components/schemas/IncludedManifest"
+            },
+            "title": "Includes",
+            "type": "array"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationIssue"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/ManifestSection"
+            },
+            "title": "Sections",
+            "type": "array"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "name",
+          "status",
+          "diagnostic",
+          "catalogs",
+          "includes",
+          "sections",
+          "conditional",
+          "included_by",
+          "issues"
+        ],
+        "title": "ManifestView",
         "type": "object"
       },
       "ObjectDetail": {
@@ -968,6 +1158,57 @@
         "summary": "Explain Conditions",
         "tags": [
           "repositories"
+        ]
+      }
+    },
+    "/api/repositories/{repo_id}/manifests/{path}": {
+      "get": {
+        "operationId": "get_manifest_api_repositories__repo_id__manifests__path__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repo_id",
+            "required": true,
+            "schema": {
+              "title": "Repo Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManifestView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Manifest",
+        "tags": [
+          "manifests"
         ]
       }
     },
