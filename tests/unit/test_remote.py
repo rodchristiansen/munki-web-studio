@@ -1,3 +1,4 @@
+import sys
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -65,7 +66,8 @@ def test_remote_commands_need_sign_in(studio: TestClient) -> None:
 def test_device_sign_in_stores_a_private_token(studio: TestClient, idp: FakeIdP) -> None:
     log_in(idp, ["viewers"])
     path = remote.credentials_path()
-    assert path.stat().st_mode & 0o777 == 0o600
+    if sys.platform != "win32":  # Windows ignores chmod; the file inherits the profile's ACL.
+        assert path.stat().st_mode & 0o777 == 0o600
     token = runner.invoke(cli, ["token", "--url", URL]).stdout.strip()
     assert (
         studio.get("/api/session", headers={"Authorization": f"Bearer {token}"}).json()["role"]
