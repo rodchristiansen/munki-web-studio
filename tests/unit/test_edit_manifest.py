@@ -75,17 +75,9 @@ def test_catalog_order_moves_only_when_asked(client: TestClient) -> None:
     change_id = client.post("/api/repositories/fixture/changesets", json={}).json()["id"]
     base = client.get(f"/api/repositories/fixture/objects/{LAB}").json()["revision"]
     [file] = edit(client, change_id, base, {"catalogs": ["production", "testing"]}).json()["files"]
-    assert (
-        changed(file["diff"])
-        == [
-            "-\t\t<string>testing</string>",
-            "+\t\t<string>production</string>",
-            "-\t\t<string>production</string>",
-            "+\t\t<string>testing</string>",
-        ]
-        or len(changed(file["diff"])) <= 4
-    )
     assert file["surgical"]
+    # Swapping two items is one element moved: two changed lines, nothing else.
+    assert len(changed(file["diff"])) == 2
     later = edit(client, change_id, base, {"managed_installs": ["ExampleEditor"]}).json()
     paths = {tuple(c["path"]) for c in later["files"][0]["changes"]}
     assert paths == {("catalogs",), ("managed_installs",)}
