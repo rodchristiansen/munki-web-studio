@@ -22,6 +22,21 @@ from munki_web_studio import platform
 
 MAX_UPLOAD_BYTES = 16 * 1024**3
 _SAFE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9 ._+()-]{0,200}")
+# Names Windows treats as devices whatever the extension, including the
+# superscript-digit forms it also reserves.
+_DEVICES = frozenset(
+    {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$"}
+    | {f"{port}{n}" for port in ("COM", "LPT") for n in [*"0123456789", "¹", "²", "³"]}
+)
+
+
+def safe_filename(name: str) -> bool:
+    """A name that means the same file on macOS, Linux and Windows: plain
+    characters, no trailing dot or space, and not a Windows device name."""
+    if not _SAFE_NAME.fullmatch(name) or name.endswith((".", " ")):
+        return False
+    stem = name.split(".")[0].rstrip(" ").upper()
+    return stem not in _DEVICES
 
 
 class UploadError(Exception):
@@ -59,12 +74,7 @@ class UploadStore:
         os.replace(temp, meta)
 
     def create(self, repo_id: str, owner: str, filename: str, size: int, sha256: str) -> Upload:
-        if not _SAFE_NAME.fullmatch(filename) or filename.split(".")[0].upper() in {
-            "CON",
-            "PRN",
-            "AUX",
-            "NUL",
-        }:
+        if not safe_filename(filename):
             raise UploadError(400, "Use a plain file name: letters, digits, spaces and . _ + ( ) -")
         if not filename.lower().endswith(platform.IMPORT_SUFFIXES):
             raise UploadError(400, f"Packages must end in {', '.join(platform.IMPORT_SUFFIXES)}")

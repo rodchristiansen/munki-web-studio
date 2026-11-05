@@ -160,7 +160,17 @@ def test_a_corrupted_upload_is_refused_and_can_be_resent(studio: TestClient) -> 
 
 @pytest.mark.parametrize(
     "name,size,status",
-    [("../evil.pkg", 10, 400), ("CON.pkg", 10, 400), ("Example.exe", 10, 400), ("Ok.pkg", 0, 413)],
+    [
+        ("../evil.pkg", 10, 400),
+        ("CON.pkg", 10, 400),
+        ("com1.pkg", 10, 400),
+        ("LPT9.tar.pkg", 10, 400),
+        ("COM¹.pkg", 10, 400),
+        ("Example.pkg.", 10, 400),
+        ("Example.pkg ", 10, 400),
+        ("Example.exe", 10, 400),
+        ("Ok.pkg", 0, 413),
+    ],
 )
 def test_uploads_are_checked_when_declared(
     studio: TestClient, name: str, size: int, status: int

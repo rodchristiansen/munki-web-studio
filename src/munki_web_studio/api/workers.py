@@ -11,7 +11,6 @@ import contextlib
 import hashlib
 import hmac
 import io
-import re
 import secrets
 import shutil
 import tarfile
@@ -39,7 +38,7 @@ from munki_web_studio.repository.config import Repository, Settings, WorkerEntry
 from munki_web_studio.repository.index import Index
 from munki_web_studio.repository.paths import PathEscapeError, normalize, read_contained
 from munki_web_studio.repository.scanner import scan
-from munki_web_studio.uploads import UploadError, UploadStore
+from munki_web_studio.uploads import UploadError, UploadStore, safe_filename
 
 router = APIRouter(prefix="/api/worker", tags=["workers"])
 settings_router = APIRouter(tags=["workers"])
@@ -411,7 +410,7 @@ def _import_draft(request: Request, job: Job, folder: Path, spec: RemoteSpec) ->
     """Turn an import job's pkginfo into a draft for the person who started it.
 
     The pkginfo must be a plain dictionary with a name and version, and its
-    installer_item_hash must be the upload's own SHA-256, so the worker cannot
+    installer hash must be the upload's own SHA-256, so the worker cannot
     describe a different file. The installer itself is never taken from the
     worker: the draft copies the studio's own upload on save."""
     if spec.stdout_file is None or spec.upload_argument is None:
@@ -424,16 +423,17 @@ def _import_draft(request: Request, job: Job, folder: Path, spec: RemoteSpec) ->
     name, version = pkginfo.get("name"), pkginfo.get("version")
     if not isinstance(name, str) or not isinstance(version, str) or not name or not version:
         raise ValueError("the pkginfo has no name and version")
-    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9 ._+()-]{0,120}", f"{name}-{version}"):
+    if len(f"{name}-{version}") > 120 or not safe_filename(f"{name}-{version}"):
         raise ValueError(f"{name!r} {version!r} cannot be used in a file name")
     store: UploadStore = request.app.state.uploads
     upload = store.get(str(job.arguments[spec.upload_argument]))
-    if pkginfo.get("installer_item_hash") != upload.sha256:
-        raise ValueError("the pkginfo's installer_item_hash is not the upload's SHA-256")
     subdirectory = str(job.arguments.get("subdirectory", ""))
     pkginfo_path, payload_path, location = platform.import_paths(
         name, version, upload.filename, subdirectory
     )
+    # The platform checks that the pkginfo describes this very upload, and
+    # points it at the installer's new location.
+    platform.prepare_import(pkginfo, upload.sha256, location)
     repo = _repo(request, job.repo_id)
     if (repo.root / payload_path).exists():
         raise ValueError(f"{payload_path} already exists; rename the installer and import again")
@@ -449,7 +449,6 @@ def _import_draft(request: Request, job: Job, folder: Path, spec: RemoteSpec) ->
     while (repo.root / candidate).exists():
         candidate = f"{stem}__{number}" + (f".{suffix}" if suffix else "")
         number += 1
-    pkginfo["installer_item_location"] = location
     changes: ChangeSetStore = request.app.state.changes
     draft = changes.create(repo.id, job.created_by, job.created_by_name, f"Import {name} {version}")
     changes.put_new_file(draft.id, candidate, pkginfo)

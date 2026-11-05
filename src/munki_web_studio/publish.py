@@ -8,9 +8,12 @@ one. A release is named by a hash of everything in it, so publishing again with
 nothing changed reuses the release and reports that nothing changed.
 
 On POSIX `current` is a symlink replaced with one rename, which is atomic. On
-Windows it is a directory junction, and Windows cannot rename over a directory,
-so the old junction is moved aside and the new one moved in: two renames, with
-a moment between them in which `current` does not exist.
+Windows it is a directory junction. Windows cannot rename over a directory, so
+an existing junction is instead pointed at the new release in place
+(FSCTL_SET_REPARSE_POINT), which readers also see in one step. The first
+publish, or a `current` that is not a junction, creates a junction beside it
+and renames it in, with a moment between the renames in which `current` does
+not exist.
 """
 
 import contextlib
@@ -138,12 +141,82 @@ def releases(publish: Publish) -> list[Release]:
     return sorted(found, key=lambda r: r.published_at, reverse=True)
 
 
+if sys.platform == "win32":
+
+    def _retarget_junction(junction: Path, release: Path) -> None:
+        """Point an existing junction at another folder in one step, by replacing
+        its mount-point data. Opening the junction itself needs no admin rights."""
+        import ctypes
+        import struct
+        from ctypes import wintypes
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        create = kernel32.CreateFileW
+        create.argtypes = (
+            wintypes.LPCWSTR,
+            wintypes.DWORD,
+            wintypes.DWORD,
+            wintypes.LPVOID,
+            wintypes.DWORD,
+            wintypes.DWORD,
+            wintypes.HANDLE,
+        )
+        create.restype = wintypes.HANDLE
+        control = kernel32.DeviceIoControl
+        control.argtypes = (
+            wintypes.HANDLE,
+            wintypes.DWORD,
+            wintypes.LPVOID,
+            wintypes.DWORD,
+            wintypes.LPVOID,
+            wintypes.DWORD,
+            ctypes.POINTER(wintypes.DWORD),
+            wintypes.LPVOID,
+        )
+        control.restype = wintypes.BOOL
+        kernel32.CloseHandle.argtypes = (wintypes.HANDLE,)
+
+        folder = str(release.resolve(strict=True))
+        substitute = ("\\??\\" + folder).encode("utf-16-le")
+        printed = folder.encode("utf-16-le")
+        names = substitute + b"\0\0" + printed + b"\0\0"
+        offsets = struct.pack("<HHHH", 0, len(substitute), len(substitute) + 2, len(printed))
+        body = offsets + names
+        mount_point, set_reparse_point = 0xA0000003, 0x000900A4
+        buffer = struct.pack("<IHH", mount_point, len(body), 0) + body
+        generic_write, share_all, open_existing = 0x40000000, 0x7, 3
+        open_reparse_point, backup_semantics = 0x00200000, 0x02000000
+        handle = create(
+            str(junction),
+            generic_write,
+            share_all,
+            None,
+            open_existing,
+            open_reparse_point | backup_semantics,
+            None,
+        )
+        if handle == wintypes.HANDLE(-1).value:
+            raise ctypes.WinError(ctypes.get_last_error())
+        try:
+            written = wintypes.DWORD()
+            ok = control(
+                handle, set_reparse_point, buffer, len(buffer), None, 0, ctypes.byref(written), None
+            )
+            if not ok:
+                raise ctypes.WinError(ctypes.get_last_error())
+        finally:
+            kernel32.CloseHandle(handle)
+
+
 def _switch(target: Path, release: str) -> None:
     current = target / "current"
     staged = target / f".current-{secrets.token_hex(4)}"
     if sys.platform == "win32":
         import _winapi
 
+        if os.path.isjunction(current):
+            _retarget_junction(current, target / "releases" / release)
+            return
         _winapi.CreateJunction(str(target / "releases" / release), str(staged))  # type: ignore[attr-defined]
         old = target / f".current-old-{secrets.token_hex(4)}"
         if current.exists() or is_link(current):

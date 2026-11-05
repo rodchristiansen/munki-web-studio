@@ -1,7 +1,9 @@
 """Publishing snapshots: complete releases switched in at once, the same
 content published once, and a failed or partial build never shown as done."""
 
+import os
 import shutil
+import sys
 import time
 from collections.abc import Iterator
 from dataclasses import replace
@@ -89,7 +91,11 @@ def test_a_release_holds_what_clients_download_and_becomes_current(
     result = run_publish(studio)["result"]
     assert result["built"] and result["switched"] and not result["already_published"]
     current = tmp_path / "published" / "current"
-    assert current.is_symlink() and current.resolve().name == result["release"]
+    assert current.resolve().name == result["release"]
+    if sys.platform == "win32":
+        assert os.path.isjunction(current)
+    else:
+        assert current.is_symlink()
     published = tree(current)
     expected = {
         path: data
@@ -187,6 +193,50 @@ def test_a_crash_after_the_build_finishes_on_the_next_publish(
     monkeypatch.undo()
     result = run_publish(studio)["result"]
     assert not result["built"] and result["switched"]
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="junctions are Windows-only")
+def test_on_windows_current_is_one_junction_pointed_at_each_release(
+    tmp_path: Path, root: Path
+) -> None:
+    target = tmp_path / "published"
+    current = target / "current"
+    for client in make(settings_for(tmp_path, root), tmp_path):
+        first = run_publish(client)["result"]["release"]
+        assert os.path.isjunction(current) and current.resolve().name == first
+        before = tree(target / "releases" / first)
+        site = root / "manifests" / "site_default"
+        site.write_bytes(site.read_bytes().replace(b"ExampleRuntime", b"X"))
+        client.post("/api/repositories/fixture/rescan").raise_for_status()
+        second = run_publish(client)["result"]["release"]
+        assert second != first
+        # The same junction now points at the new release, and the old release
+        # is untouched: nothing was removed through the link.
+        assert os.path.isjunction(current) and current.resolve().name == second
+        assert tree(target / "releases" / first) == before
+        assert b"<string>X</string>" in (current / "manifests" / "site_default").read_bytes()
+        assert sorted(p.name for p in target.iterdir()) == ["current", "releases"]
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="junctions are Windows-only")
+def test_on_windows_a_current_that_is_not_a_junction_is_replaced(
+    tmp_path: Path,
+) -> None:
+    target = tmp_path / "published"
+    for release in ("a", "b"):
+        (target / "releases" / release).mkdir(parents=True)
+        (target / "releases" / release / "file").write_text(release)
+    (target / "current").mkdir()
+    (target / "current" / "stale").write_text("x")
+    publish._switch(target, "a")  # pyright: ignore[reportPrivateUsage]
+    assert os.path.isjunction(target / "current")
+    assert (target / "current" / "file").read_text() == "a"
+    # A real folder is moved aside, never deleted.
+    [aside] = target.glob(".current-old-*")
+    assert (aside / "stale").read_text() == "x"
+    publish._switch(target, "b")  # pyright: ignore[reportPrivateUsage]
+    assert (target / "current" / "file").read_text() == "b"
+    assert (target / "releases" / "a" / "file").read_text() == "a"
 
 
 def test_hard_links_are_used_only_when_asked(tmp_path: Path, root: Path) -> None:

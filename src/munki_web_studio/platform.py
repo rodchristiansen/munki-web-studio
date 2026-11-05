@@ -203,3 +203,11 @@ def import_paths(name: str, version: str, filename: str, subdirectory: str) -> t
     folder = f"{subdirectory}/" if subdirectory else ""
     location = f"{folder}{filename}"
     return f"pkgsinfo/{folder}{name}-{version}{NEW_PKGINFO_SUFFIX}", f"pkgs/{location}", location
+
+
+def prepare_import(pkginfo: dict[str, Any], sha256: str, location: str) -> None:
+    """Check that makepkginfo's pkginfo describes the uploaded file, then point
+    it at the installer's place in the repository. Raises ValueError otherwise."""
+    if pkginfo.get("installer_item_hash") != sha256:
+        raise ValueError("the pkginfo's installer_item_hash is not the upload's SHA-256")
+    pkginfo["installer_item_location"] = location
