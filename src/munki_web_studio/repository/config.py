@@ -10,9 +10,11 @@ state_dir = "/var/lib/studio"
 """
 
 import tomllib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, cast
+
+from munki_web_studio.auth.config import AuthConfigError, AuthSettings, parse_auth
 
 
 class ConfigError(Exception):
@@ -36,6 +38,7 @@ class Settings:
     state_dir: Path
     allowed_hosts: tuple[str, ...] = LOCAL_HOSTS
     rescan_seconds: float = 30
+    auth: AuthSettings = field(default_factory=AuthSettings)
 
     def repository(self, repo_id: str) -> Repository:
         for repo in self.repositories:
@@ -93,9 +96,19 @@ def parse_settings(raw: dict[str, Any], base: Path) -> Settings:
     rescan = raw.get("rescan_seconds", 30)
     if not isinstance(rescan, int | float) or isinstance(rescan, bool) or rescan < 0:
         raise ConfigError("rescan_seconds must be a number of seconds, or 0 to turn it off")
+    try:
+        auth = parse_auth(raw.get("auth"))
+    except AuthConfigError as error:
+        raise ConfigError(str(error)) from error
+    if not auth.enabled and any(h not in LOCAL_HOSTS for h in allowed):
+        raise ConfigError(
+            'Set up sign-in ([auth] mode = "oidc") before serving other host names; '
+            "without it the studio is for this machine only"
+        )
     return Settings(
         repositories=tuple(repos),
         state_dir=(base / state).resolve(strict=False),
         allowed_hosts=allowed,
         rescan_seconds=float(rescan),
+        auth=auth,
     )

@@ -833,6 +833,46 @@
         "title": "ScanSummary",
         "type": "object"
       },
+      "SessionInfo": {
+        "properties": {
+          "csrf_token": {
+            "title": "Csrf Token",
+            "type": "string"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "sign_in": {
+            "title": "Sign In",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "email",
+          "role",
+          "csrf_token",
+          "sign_in"
+        ],
+        "title": "SessionInfo",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -1700,6 +1740,28 @@
         "summary": "Where Used",
         "tags": [
           "repositories"
+        ]
+      }
+    },
+    "/api/session": {
+      "get": {
+        "description": "Who is signed in, and the token to send with changes.",
+        "operationId": "get_session_api_session_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Session",
+        "tags": [
+          "auth"
         ]
       }
     }

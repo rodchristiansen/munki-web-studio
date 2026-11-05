@@ -174,7 +174,11 @@ def test_rescan_finds_outside_edits(client: TestClient, tmp_path: Path) -> None:
     ]
     target.write_bytes(target.read_bytes().replace(b"ExampleRuntime", b"ExampleRuntimeX"))
     os.utime(target, ns=(10**18, 10**18))
-    summary = client.post("/api/repositories/fixture/rescan").json()
+    token = client.get("/api/session").json()["csrf_token"]
+    assert client.post("/api/repositories/fixture/rescan").status_code == 403
+    summary = client.post(
+        "/api/repositories/fixture/rescan", headers={"X-CSRF-Token": token}
+    ).json()
     assert summary["changed"] == ["manifests/site_default"]
     after = client.get("/api/repositories/fixture/objects/manifests/site_default").json()[
         "revision"

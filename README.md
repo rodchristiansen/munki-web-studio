@@ -46,6 +46,37 @@ The proposed starting point is a self-hosted web app with a repository service
 and an optional macOS worker. Deployment, framework, identity provider, and
 licensing choices remain open. No cloud resources have been provisioned.
 
+## Sign-in
+
+Without an `[auth]` table the studio is single-user and answers only on this
+machine (localhost). To serve it to a team, add OpenID Connect sign-in. Any
+provider works, including Entra ID; the client secret is read from the
+environment variable you name, never from the file:
+
+```toml
+allowed_hosts = ["studio.example.org"]
+
+[auth]
+mode = "oidc"
+issuer = "https://login.microsoftonline.com/<tenant-id>/v2.0"
+client_id = "<application-id>"
+client_secret_env = "STUDIO_OIDC_SECRET"
+public_url = "https://studio.example.org"
+role_claim = "roles"
+
+[auth.roles]
+Viewer = ["Studio.Viewer"]
+Editor = ["Studio.Editor"]
+Publisher = ["Studio.Publisher"]
+Administrator = ["Studio.Administrator"]
+```
+
+Register `https://studio.example.org/auth/callback` as the redirect URI. Each
+person gets the highest role their claim values map to; people with none are
+refused unless you set `default_role`. Sessions live on the server, and every
+change must carry the session's CSRF token. While sign-in is on, `/mcp` refuses
+requests until MCP sign-in lands.
+
 ## Command line
 
 `mwsctl` works on a repository folder directly, with no server. Find packages

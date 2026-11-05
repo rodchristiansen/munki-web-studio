@@ -32,6 +32,7 @@ function detail(path: string, name: string, version: string) {
 
 function respond(url: string): unknown {
   const { pathname, searchParams } = new URL(url);
+  if (pathname === "/api/session") return { name: "Local administrator", email: null, role: "Administrator", csrf_token: "t", sign_in: "none" };
   if (pathname === "/api/repositories") return [repo];
   if (pathname.endsWith("/packages")) {
     const q = (searchParams.get("q") ?? "").toLowerCase();

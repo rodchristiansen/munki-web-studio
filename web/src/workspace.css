@@ -194,3 +194,4 @@ body { min-height: 100vh; }
 .manifest-content.detail { max-width: none; }
 .notice { display: flex; gap: 12px; align-items: center; justify-content: space-between; padding: 8px 16px; font-size: 12px; background: color-mix(in srgb, var(--accent) 14%, var(--surface)); border-bottom: 1px solid var(--line); }
 .rescan { font-size: 11px; margin-top: 4px; }
+.signed-in { font-size: 11px; color: var(--text); }

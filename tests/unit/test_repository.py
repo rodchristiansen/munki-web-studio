@@ -156,6 +156,8 @@ def test_allowed_hosts_always_include_local_names(tmp_path: Path, repo: Reposito
     config = tmp_path / "studio.toml"
     config.write_text(
         'allowed_hosts = ["studio.example.org"]\n'
+        '[auth]\nmode = "oidc"\nissuer = "https://id.example.org"\nclient_id = "studio"\n'
+        'public_url = "https://studio.example.org"\n'
         f'[[repositories]]\nid = "main"\npath = "{repo.root}"\n'
     )
     assert load_settings(config).allowed_hosts == ("localhost", "127.0.0.1", "studio.example.org")
