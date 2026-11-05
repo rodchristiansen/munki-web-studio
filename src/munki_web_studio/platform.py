@@ -45,6 +45,11 @@ def summarize(kind: str, data: Any) -> dict[str, Any]:
     }
     if kind == "pkginfo":
         location = _text(mapping.get("installer_item_location"))
+        # Munki treats a pkginfo without installer_type as an Apple package, or as
+        # nopkg when it has no installer item at all.
+        summary["installer_type"] = _text(mapping.get("installer_type")) or (
+            "pkg" if location else "nopkg"
+        )
         summary["payload"] = f"{PAYLOAD_FOLDER}/{location.lstrip('/')}" if location else None
     return summary
 

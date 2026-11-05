@@ -135,7 +135,13 @@ def _package(name: str, objects: list[IndexedObject]) -> Package:
         display_name=newest.display_name,
         category=newest.category,
         versions=[
-            PackageVersion(version=o.version, path=o.path, catalogs=o.catalogs, status=o.status)
+            PackageVersion(
+                version=o.version,
+                path=o.path,
+                catalogs=o.catalogs,
+                status=o.status,
+                installer_type=o.summary.get("installer_type"),
+            )
             for o in objects
         ],
     )

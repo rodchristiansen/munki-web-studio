@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 # Bump when the stored fields change; an index with another version is rebuilt.
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS objects (

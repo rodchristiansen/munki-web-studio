@@ -1,0 +1,7 @@
+# Config for the browser tests: serves the fixture repository read-only.
+state_dir = "../../web/test-results/state"
+
+[[repositories]]
+id = "fixture"
+name = "Fixture repository"
+path = "repo"

@@ -492,6 +492,17 @@
             "title": "Catalogs",
             "type": "array"
           },
+          "installer_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Installer Type"
+          },
           "path": {
             "title": "Path",
             "type": "string"

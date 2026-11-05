@@ -7,7 +7,7 @@ export default defineConfig({
   use: { baseURL: `http://127.0.0.1:${port}` },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
-    command: `uv run mwsctl serve --port ${port}`,
+    command: `uv run mwsctl serve --port ${port} --config tests/fixtures/e2e.toml`,
     cwd: "..",
     url: `http://127.0.0.1:${port}/api/health`,
     reuseExistingServer: false,
