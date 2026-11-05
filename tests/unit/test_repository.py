@@ -122,3 +122,31 @@ def test_settings_load_from_toml(tmp_path: Path, repo: Repository) -> None:
     config.write_text('[[repositories]]\nid = "main"\npath = "missing"\n')
     with pytest.raises(ConfigError, match="not a directory"):
         load_settings(config)
+
+
+def test_reads_are_bounded_and_regular_files_only(repo: Repository, tmp_path: Path) -> None:
+    from munki_web_studio.repository.paths import read_contained
+
+    big = repo.root / "manifests/huge"
+    big.write_bytes(b"x" * 2048)
+    assert read_contained(repo.root, "manifests/huge", 1024).raw is None
+    assert read_contained(repo.root, "manifests/huge", 4096).raw == b"x" * 2048
+    with pytest.raises(PathEscapeError):
+        read_contained(repo.root, "manifests", 1024)
+    (repo.root / "manifests/inside-link").symlink_to(repo.root / "manifests/site_default")
+    assert read_contained(repo.root, "manifests/inside-link", 1 << 20).raw
+    (repo.root / "manifests/outside-link").symlink_to(tmp_path / "elsewhere")
+    with pytest.raises(PathEscapeError):
+        read_contained(repo.root, "manifests/outside-link", 1024)
+
+
+def test_oversized_files_are_indexed_without_being_parsed(
+    repo: Repository, index: Index, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from munki_web_studio.repository import scanner
+
+    monkeypatch.setattr(scanner, "MAX_FILE_BYTES", 1024)
+    (repo.root / "manifests/huge").write_bytes(b"x" * 2048)
+    scan(repo, index)
+    huge = index.get(repo.id, "manifests/huge")
+    assert huge is not None and huge.status == "invalid" and "larger than" in (huge.error or "")

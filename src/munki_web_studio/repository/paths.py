@@ -1,6 +1,14 @@
 """Keep every repository path inside its root, including through symlinks."""
 
+import os
+import stat
+from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
+
+try:
+    import fcntl
+except ImportError:  # Windows
+    fcntl = None
 
 
 class PathEscapeError(ValueError):
@@ -25,3 +33,56 @@ def contained(root: Path, relative: str) -> Path:
     if not target.is_relative_to(real_root):
         raise PathEscapeError(f"Path {relative!r} leaves the repository")
     return target
+
+
+@dataclass(frozen=True)
+class FileRead:
+    """A file read from inside the repository. `raw` is None when it was too large."""
+
+    raw: bytes | None
+    size: int
+    mtime_ns: int
+
+
+def _descriptor_path(fd: int) -> Path | None:
+    """The real path of an open file, where the platform can tell us."""
+    if fcntl is not None and hasattr(fcntl, "F_GETPATH"):  # macOS
+        buffer = fcntl.fcntl(fd, fcntl.F_GETPATH, b"\0" * 1024)
+        return Path(os.fsdecode(buffer.rstrip(b"\0")))
+    proc = Path(f"/proc/self/fd/{fd}")
+    if proc.exists():  # Linux
+        return Path(os.readlink(proc))
+    return None
+
+
+def read_contained(root: Path, relative: str, limit: int) -> FileRead:
+    """Read a regular file under root without following a swapped-in symlink.
+
+    The path is resolved and checked, then opened with O_NOFOLLOW, and the open
+    descriptor's real path is checked again, so replacing a file or directory
+    with a link between the check and the read cannot redirect it. At most
+    `limit` + 1 bytes are read.
+    """
+    real_root = root.resolve(strict=True)
+    target = contained(real_root, relative)
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0)
+    try:
+        fd = os.open(target, flags)
+    except OSError as error:
+        raise PathEscapeError(f"Cannot open {relative!r}: {error.strerror}") from error
+    try:
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode):
+            raise PathEscapeError(f"{relative!r} is not a regular file")
+        opened = _descriptor_path(fd)
+        if opened is not None and not opened.resolve().is_relative_to(real_root):
+            raise PathEscapeError(f"Path {relative!r} leaves the repository")
+        if info.st_size > limit:
+            return FileRead(raw=None, size=info.st_size, mtime_ns=info.st_mtime_ns)
+        with os.fdopen(fd, "rb", closefd=False) as handle:
+            raw = handle.read(limit + 1)
+        if len(raw) > limit:
+            return FileRead(raw=None, size=len(raw), mtime_ns=info.st_mtime_ns)
+        return FileRead(raw=raw, size=info.st_size, mtime_ns=info.st_mtime_ns)
+    finally:
+        os.close(fd)
