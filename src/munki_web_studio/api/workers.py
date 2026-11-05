@@ -24,10 +24,13 @@ from munki_web_studio.api.read import _repo  # pyright: ignore[reportPrivateUsag
 from munki_web_studio.auth.model import Role
 from munki_web_studio.auth.routes import require
 from munki_web_studio.auth.sessions import Session
+from munki_web_studio.changes.apply import SaveError
+from munki_web_studio.jobs.apply import swap_folder
 from munki_web_studio.jobs.runner import WORKER_MAX_AGE, Runner, repository_revision
 from munki_web_studio.jobs.store import Job, JobStore, LeaseLostError
 from munki_web_studio.repository.config import Settings, WorkerEntry
 from munki_web_studio.repository.paths import PathEscapeError, normalize, read_contained
+from munki_web_studio.repository.scanner import scan
 
 router = APIRouter(prefix="/api/worker", tags=["workers"])
 settings_router = APIRouter(tags=["workers"])
@@ -302,19 +305,62 @@ def complete(request: Request, job_id: str, body: Completion, worker: Worker) ->
         for extra in folder.rglob("*"):
             if extra.is_file() and extra not in listed:
                 extra.unlink()
-    result = {
+    result: dict[str, Any] = {
         "artifacts": [a.model_dump() for a in body.artifacts],
         "tool_version": body.tool_version,
         "output": body.output[-4000:],
         "input_revision": job.input_revision,
         "worker": worker.id,
     }
+    spec = _runner(request).operations[job.operation].remote
+    if spec is not None and spec.applies_to:
+        try:
+            result["applied"] = _apply(request, worker, job, folder / spec.outputs)
+        except (ValueError, OSError, SaveError) as error:
+            message = f"The {spec.applies_to} were not replaced: {error}"
+            try:
+                failed = _store(request).fail(job.id, worker.id, message)
+            except LeaseLostError as lost:
+                raise HTTPException(409, str(lost)) from None
+            _audit(request, worker.id, "job fail", failed, {"reason": message})
+            return {"status": failed.status}
     try:
         done = _store(request).complete(job.id, worker.id, result)
     except LeaseLostError as error:
         raise HTTPException(409, str(error)) from None
     _audit(request, worker.id, "job complete", done, {"artifacts": len(body.artifacts)})
     return {"status": done.status}
+
+
+def _apply(request: Request, worker: WorkerEntry, job: Job, output: Path) -> dict[str, Any]:
+    """Check a job's outputs and swap them into the repository. Raises before
+    touching anything if the repository moved on or the outputs fail the check."""
+    op = _runner(request).operations[job.operation]
+    spec = op.remote
+    if spec is None or spec.applies_to is None:
+        return {}
+    repo = _repo(request, job.repo_id)
+    index = request.app.state.index
+    if not repo.writable:
+        raise ValueError("the repository is read-only in the studio's configuration")
+    scan(repo, index)
+    if repository_revision(index, repo) != job.input_revision:
+        raise ValueError("the repository changed while the job ran; start it again")
+    summary = spec.check(output, len(index.all(repo.id, "pkginfo"))) if spec.check else {}
+    # Hold the lease for the swap, so a retry cannot start on the same job meanwhile.
+    _store(request).heartbeat(job.id, worker.id, message=f"Replacing {spec.applies_to}")
+    swap_folder(repo, spec.applies_to, output, request.app.state.journal_dir)
+    scan(repo, index)
+    request.app.state.audit.record(
+        actor=f"worker:{worker.id}",
+        actor_name=worker.id,
+        interface="worker",
+        action=f"replace {spec.applies_to}",
+        repo_id=repo.id,
+        target=job.id,
+        detail={"started_by": job.created_by_name, "items": summary},
+    )
+    return {"folder": spec.applies_to, "counts": summary}
 
 
 class Failure(BaseModel):

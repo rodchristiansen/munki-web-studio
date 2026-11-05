@@ -127,7 +127,7 @@ export interface paths {
         };
         /**
          * List Catalogs
-         * @description Catalog names from pkginfo membership, with how many pkginfo list each.
+         * @description Every catalog on disk or named by a pkginfo, and whether it is up to date.
          */
         get: operations["list_catalogs_api_repositories__repo_id__catalogs_get"];
         put?: never;
@@ -147,7 +147,7 @@ export interface paths {
         };
         /**
          * Get Catalog
-         * @description The pkginfo files that list this catalog.
+         * @description One catalog's members, and what generating catalogs would add or remove.
          */
         get: operations["get_catalog_api_repositories__repo_id__catalogs__name__get"];
         put?: never;
@@ -831,12 +831,50 @@ export interface components {
             /** Cancel */
             cancel: boolean;
         };
+        /** CatalogDetail */
+        CatalogDetail: {
+            /** Error */
+            error: string | null;
+            /** Expected */
+            expected: number;
+            /** Extra */
+            extra: components["schemas"]["CatalogItem"][];
+            /** Items */
+            items: number;
+            /** Members */
+            members: components["schemas"]["CatalogItem"][];
+            /** Missing */
+            missing: components["schemas"]["CatalogItem"][];
+            /** Name */
+            name: string;
+            /** Path */
+            path: string | null;
+            /** Up To Date */
+            up_to_date: boolean;
+        };
+        /** CatalogItem */
+        CatalogItem: {
+            /** Name */
+            name: string;
+            /** Pkginfo */
+            pkginfo: string | null;
+            /** Version */
+            version: string;
+        };
         /** CatalogSummary */
         CatalogSummary: {
+            /** Error */
+            error: string | null;
+            /** Expected */
+            expected: number;
             /** Items */
             items: number;
             /** Name */
             name: string;
+            /** Path */
+            path: string | null;
+            /** Up To Date */
+            up_to_date: boolean;
         };
         /** ChangeSetInfo */
         ChangeSetInfo: {
@@ -1644,10 +1682,7 @@ export interface operations {
     };
     get_catalog_api_repositories__repo_id__catalogs__name__get: {
         parameters: {
-            query?: {
-                limit?: number;
-                offset?: number;
-            };
+            query?: never;
             header?: never;
             path: {
                 repo_id: string;
@@ -1663,7 +1698,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ObjectPage"];
+                    "application/json": components["schemas"]["CatalogDetail"];
                 };
             };
             /** @description Validation Error */

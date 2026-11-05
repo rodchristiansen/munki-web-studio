@@ -154,8 +154,19 @@ def submit_job(
     missing = runner.missing(op)
     if missing:
         raise HTTPException(409, f"{op.title} needs {explain_missing(missing)}; none is connected")
-    if body.arguments:
-        raise HTTPException(400, f"{op.title} takes no arguments")
+    allowed = op.remote.arguments if op.remote else frozenset[str]()
+    unknown = sorted(set(body.arguments) - allowed)
+    if unknown:
+        raise HTTPException(400, f"{op.title} does not take {', '.join(unknown)}")
+    if op.remote and op.remote.applies_to:
+        if not repo.writable:
+            raise HTTPException(403, "This repository is read-only in the studio's configuration")
+        if repo.live and body.arguments.get("acknowledge_live") is not True:
+            raise HTTPException(
+                428,
+                "Clients read this repository directly; confirm that the new "
+                f"{op.remote.applies_to} go live at once",
+            )
     job, created = _store(request).submit(
         repo_id=repo.id,
         operation=op.name,

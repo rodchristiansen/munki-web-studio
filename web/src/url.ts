@@ -2,15 +2,16 @@
 
 export interface WorkspaceState {
   repo: string | null;
-  area: "packages" | "manifests" | "activity" | "settings";
+  area: "packages" | "manifests" | "catalogs" | "activity" | "settings";
   q: string;
   group: "category" | "type" | "directory";
   path: string | null;
   manifest: string | null;
   job: string | null;
+  catalog: string | null;
 }
 
-const AREAS = ["packages", "manifests", "activity", "settings"] as const;
+const AREAS = ["packages", "manifests", "catalogs", "activity", "settings"] as const;
 
 export function readState(search: string = window.location.search): WorkspaceState {
   const params = new URLSearchParams(search);
@@ -23,6 +24,7 @@ export function readState(search: string = window.location.search): WorkspaceSta
     path: params.get("path"),
     manifest: params.get("manifest"),
     job: params.get("job"),
+    catalog: params.get("catalog"),
   };
 }
 
@@ -35,6 +37,7 @@ export function toSearch(state: WorkspaceState): string {
   if (state.path) params.set("path", state.path);
   if (state.manifest) params.set("manifest", state.manifest);
   if (state.job) params.set("job", state.job);
+  if (state.catalog) params.set("catalog", state.catalog);
   const text = params.toString();
   return text ? `?${text}` : window.location.pathname;
 }

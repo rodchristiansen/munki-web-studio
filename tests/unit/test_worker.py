@@ -4,6 +4,7 @@ import hashlib
 import io
 import plistlib
 import shutil
+import sys
 import tarfile
 import threading
 import time
@@ -28,14 +29,24 @@ if [ "$1" = "--version" ]; then echo "9.9.9-test"; exit 0; fi
 if [ -n "$FAKE_FAIL" ]; then echo "no catalogs for you" >&2; exit 3; fi
 staging="$2"
 mkdir -p "$staging/catalogs"
-find "$staging/pkgsinfo" -type f | sort > "$staging/catalogs/all"
-echo "wrote catalogs"
+count=$(find "$staging/pkgsinfo" -type f | wc -l | tr -d ' ')
+head='<?xml version="1.0" encoding="UTF-8"?><plist version="1.0">'
+for name in all testing; do
+  out="$staging/catalogs/$name"
+  printf '%s<array><dict><key>name</key><string>Fake%s</string>' "$head" "$name" > "$out"
+  printf '<key>version</key><string>%s</string></dict></array></plist>\n' "$count" >> "$out"
+done
+echo "wrote catalogs from $count files"
 """
 
 SLOW_TOOL = """#!/bin/sh
 if [ "$1" = "--version" ]; then echo "slow"; exit 0; fi
 sleep 30
 """
+
+
+# The fake tools are shell scripts; on Windows the real-tool tests run instead.
+posix_only = pytest.mark.skipif(sys.platform == "win32", reason="fake tools are shell scripts")
 
 
 def tool(tmp_path: Path, body: str, name: str = "makecatalogs") -> Path:
@@ -62,7 +73,7 @@ def root(tmp_path: Path) -> Path:
 @pytest.fixture
 def studio(tmp_path: Path, root: Path) -> Iterator[TestClient]:
     settings = Settings(
-        repositories=(Repository(id="fixture", name="Fixture", root=root),),
+        repositories=(Repository(id="fixture", name="Fixture", root=root, writable=True),),
         state_dir=tmp_path / "state",
         rescan_seconds=0,
         workers=(WorkerEntry("mac-1", hashlib.sha256(TOKEN.encode()).hexdigest()),),
@@ -79,7 +90,7 @@ def worker_for(studio: TestClient, tools: Tools) -> Worker:
     return Worker(cast(httpx.Client, client), "mac-1", TOKEN, tools, poll_seconds=0.05)
 
 
-def submit(studio: TestClient, operation: str = "catalog.preview") -> Any:
+def submit(studio: TestClient, operation: str = "catalog.generate") -> Any:
     return studio.post("/api/repositories/fixture/jobs", json={"operation": operation})
 
 
@@ -88,8 +99,8 @@ def test_missing_worker_names_the_tool(studio: TestClient) -> None:
     assert refused.status_code == 409
     assert "macOS worker with makecatalogs" in refused.json()["detail"]
     ops = {o["name"]: o for o in studio.get("/api/operations").json()}
-    assert not ops["catalog.preview"]["available"]
-    assert "makecatalogs" in ops["catalog.preview"]["needs"]
+    assert not ops["catalog.generate"]["available"]
+    assert "makecatalogs" in ops["catalog.generate"]["needs"]
     [entry] = studio.get("/api/workers").json()
     assert entry["id"] == "mac-1" and not entry["online"]
 
@@ -102,7 +113,7 @@ def test_handshake_reports_tools_and_capabilities(studio: TestClient, tmp_path: 
     assert entry["online"] and entry["tools"]["makecatalogs"] == "9.9.9-test"
     assert entry["capabilities"] == ["catalog.generate"] and entry["platform"] == "macOS"
     ops = {o["name"]: o for o in studio.get("/api/operations").json()}
-    assert ops["catalog.preview"]["available"] and ops["catalog.preview"]["needs"] is None
+    assert ops["catalog.generate"]["available"] and ops["catalog.generate"]["needs"] is None
 
 
 def test_a_worker_cannot_claim_capabilities_without_their_tools(studio: TestClient) -> None:
@@ -148,12 +159,12 @@ def test_a_job_runs_on_the_worker_and_returns_hashed_artifacts(
     job_id = submit(studio).json()["id"]
     assert worker.run_once()
     job = wait_for(studio, job_id, "succeeded")
-    [artifact] = job["result"]["artifacts"]
-    assert artifact["path"] == "catalogs/all"
+    artifact = job["result"]["artifacts"][0]
+    assert [a["path"] for a in job["result"]["artifacts"]] == ["catalogs/all", "catalogs/testing"]
     assert job["result"]["tool_version"] == "9.9.9-test" and job["result"]["worker"] == "mac-1"
     body = studio.get(f"/api/repositories/fixture/jobs/{job_id}/artifacts/catalogs/all")
     assert hashlib.sha256(body.content).hexdigest() == artifact["sha256"]
-    assert b"pkgsinfo/apps/creative/ExampleEditor-2.10.plist" in body.content
+    assert b"<string>Fakeall</string>" in body.content
     assert not worker.run_once()
 
 
