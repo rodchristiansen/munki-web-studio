@@ -107,3 +107,13 @@ def test_committed_openapi_schema_is_current() -> None:
     current = json.loads(json.dumps(create_app().openapi(), sort_keys=True))
     committed = json.loads(SCHEMA.read_text(encoding="utf-8"))
     assert current == committed, "Run `uv run mwsctl openapi --output web/openapi.json`"
+
+
+def test_where_used_and_validation_routes(client: TestClient) -> None:
+    used = client.get("/api/repositories/fixture/where-used/ExampleRuntime").json()
+    assert {u["source"] for u in used} >= {"manifests/site_default"}
+    report = client.get("/api/repositories/fixture/validation").json()
+    assert report["errors"] > 0 and report["warnings"] > 0
+    assert {"parse-error", "missing-package", "include-cycle"} <= {
+        i["code"] for i in report["issues"]
+    }

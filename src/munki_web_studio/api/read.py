@@ -14,14 +14,18 @@ from munki_web_studio.api.models import (
     Package,
     PackagePage,
     PackageVersion,
+    ReferenceInfo,
     RepositoryInfo,
     ScanSummary,
+    ValidationIssue,
+    ValidationReport,
 )
 from munki_web_studio.codec import ParseError, load
 from munki_web_studio.codec.model import MAX_FILE_BYTES
 from munki_web_studio.repository.config import Repository, Settings
 from munki_web_studio.repository.index import Index, IndexedObject
 from munki_web_studio.repository.paths import PathEscapeError, normalize, read_contained
+from munki_web_studio.repository.references import graph_for, validate
 
 router = APIRouter(prefix="/api/repositories", tags=["repositories"])
 
@@ -219,3 +223,23 @@ def get_catalog(
     ]
     items = [_summary(o) for o in found[offset : offset + limit]]
     return ObjectPage(items=items, total=len(found), limit=limit, offset=offset)
+
+
+@router.get("/{repo_id}/where-used/{name}")
+def where_used(request: Request, repo_id: str, name: str) -> list[ReferenceInfo]:
+    """Manifests and packages that refer to a package or manifest by name."""
+    repo = _repo(request, repo_id)
+    refs = graph_for(_index(request), repo).where_used(name)
+    return [
+        ReferenceInfo(source=r.source, field=r.field, target=r.target, condition=r.condition)
+        for r in refs
+    ]
+
+
+@router.get("/{repo_id}/validation")
+def validation(request: Request, repo_id: str) -> ValidationReport:
+    """Parse errors, missing references, include cycles, and missing payloads."""
+    repo = _repo(request, repo_id)
+    issues = [ValidationIssue(**vars(i)) for i in validate(_index(request), repo)]
+    errors = sum(1 for i in issues if i.severity == "error")
+    return ValidationReport(errors=errors, warnings=len(issues) - errors, issues=issues)

@@ -155,6 +155,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/repositories/{repo_id}/validation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Validation
+         * @description Parse errors, missing references, include cycles, and missing payloads.
+         */
+        get: operations["validation_api_repositories__repo_id__validation_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/repositories/{repo_id}/where-used/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Where Used
+         * @description Manifests and packages that refer to a package or manifest by name.
+         */
+        get: operations["where_used_api_repositories__repo_id__where_used__name__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -298,6 +338,20 @@ export interface components {
             /** Version */
             version: string | null;
         };
+        /** ReferenceInfo */
+        ReferenceInfo: {
+            /** Condition */
+            condition: string | null;
+            /** Field */
+            field: string;
+            /**
+             * Source
+             * @description Path of the object that holds the reference
+             */
+            source: string;
+            /** Target */
+            target: string;
+        };
         /** RepositoryInfo */
         RepositoryInfo: {
             /** Id */
@@ -329,6 +383,33 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /** ValidationIssue */
+        ValidationIssue: {
+            /** Code */
+            code: string;
+            /** Field */
+            field?: string | null;
+            /** Message */
+            message: string;
+            /** Path */
+            path: string;
+            /**
+             * Severity
+             * @description error or warning
+             */
+            severity: string;
+            /** Target */
+            target?: string | null;
+        };
+        /** ValidationReport */
+        ValidationReport: {
+            /** Errors */
+            errors: number;
+            /** Issues */
+            issues: components["schemas"]["ValidationIssue"][];
+            /** Warnings */
+            warnings: number;
         };
     };
     responses: never;
@@ -570,6 +651,69 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Package"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    validation_api_repositories__repo_id__validation_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                repo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationReport"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    where_used_api_repositories__repo_id__where_used__name__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                repo_id: string;
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReferenceInfo"][];
                 };
             };
             /** @description Validation Error */
