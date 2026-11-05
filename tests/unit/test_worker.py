@@ -256,6 +256,11 @@ def _archive(members: list[tarfile.TarInfo], data: bytes = b"x") -> bytes:
         ("/etc/evil", tarfile.REGTYPE),
         ("manifests/x", tarfile.REGTYPE),
         ("pkgsinfo/link", tarfile.SYMTYPE),
+        ("pkgsinfo/C:evil", tarfile.REGTYPE),
+        ("pkgsinfo/a\\..\\..\\evil", tarfile.REGTYPE),
+        ("pkgsinfo/x.yaml:stream", tarfile.REGTYPE),
+        ("pkgsinfo/CON.yaml", tarfile.REGTYPE),
+        ("pkgsinfo/nul", tarfile.REGTYPE),
     ],
 )
 def test_staging_refuses_unexpected_inputs(tmp_path: Path, name: str, kind: bytes) -> None:
@@ -298,3 +303,10 @@ def test_worker_token_prints_a_config_entry_matching_the_token() -> None:
     entry = tomllib.loads(result.stdout)
     settings = parse_settings(entry, base=Path("."))
     assert settings.workers[0].token_sha256 == hashlib.sha256(token.encode()).hexdigest()
+
+
+def test_staging_accepts_ordinary_names(tmp_path: Path) -> None:
+    member = tarfile.TarInfo("pkgsinfo/apps/Example Editor-2.10 (beta).yaml")
+    member.type = tarfile.REGTYPE
+    assert safe_extract(_archive([member]), tmp_path, ("pkgsinfo",)) == 1
+    assert (tmp_path / "pkgsinfo/apps/Example Editor-2.10 (beta).yaml").read_bytes() == b"x"

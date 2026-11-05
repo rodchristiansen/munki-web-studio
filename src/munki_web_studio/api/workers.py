@@ -181,6 +181,7 @@ def inputs(request: Request, job_id: str, worker: Worker) -> Response:
             _store(request).fail(job.id, worker.id, CHANGED)
         raise HTTPException(409, "The repository changed after this job was queued")
     buffer = io.BytesIO()
+    skipped: list[str] = []
     with tarfile.open(fileobj=buffer, mode="w:gz") as archive:
         for folder in op.remote.inputs:
             base = repo.root / folder
@@ -192,8 +193,14 @@ def inputs(request: Request, job_id: str, worker: Worker) -> Response:
                 if path.name in platform.IGNORED_NAMES:
                     continue
                 relative = path.relative_to(repo.root).as_posix()
-                read = read_contained(repo.root, relative, MAX_INPUT_FILE_BYTES)
+                try:
+                    read = read_contained(repo.root, relative, MAX_INPUT_FILE_BYTES)
+                except PathEscapeError, OSError:
+                    # A file swapped for a link, or removed, since the listing.
+                    skipped.append(relative)
+                    continue
                 if read.raw is None:
+                    skipped.append(relative)
                     continue
                 member = tarfile.TarInfo(relative)
                 member.size = len(read.raw)
@@ -202,7 +209,7 @@ def inputs(request: Request, job_id: str, worker: Worker) -> Response:
     return Response(
         buffer.getvalue(),
         media_type="application/gzip",
-        headers={"X-Input-Revision": job.input_revision},
+        headers={"X-Input-Revision": job.input_revision, "X-Skipped-Inputs": str(len(skipped))},
     )
 
 

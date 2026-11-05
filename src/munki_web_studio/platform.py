@@ -19,7 +19,11 @@ WORKER_TOOLS = {
     "makecatalogs": "/usr/local/munki/makecatalogs",
     "makepkginfo": "/usr/local/munki/makepkginfo",
 }
-TOOL_VERSION_ARGS = ("--version",)
+# How each tool prints its version.
+TOOL_VERSION_ARGS: dict[str, tuple[str, ...]] = {
+    "makecatalogs": ("--version",),
+    "makepkginfo": ("--version",),
+}
 # Each capability a worker can offer, and the tools it needs.
 CAPABILITIES = {
     "catalog.generate": ("makecatalogs",),
