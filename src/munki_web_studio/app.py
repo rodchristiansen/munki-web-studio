@@ -13,12 +13,12 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from starlette.types import Receive, Scope, Send
 
 from munki_web_studio.api import audit as audit_routes
 from munki_web_studio.api import manifests, read
 from munki_web_studio.audit import AuditLog
 from munki_web_studio.auth import routes as auth_routes
+from munki_web_studio.auth.mcp import StudioTokenVerifier
 from munki_web_studio.auth.model import Role
 from munki_web_studio.auth.sessions import SessionStore
 from munki_web_studio.mcp import create_mcp
@@ -48,13 +48,6 @@ def settings_from_environment() -> Settings:
     return Settings(repositories=(), state_dir=Path(".state").resolve())
 
 
-async def _refuse_without_oauth(scope: Scope, receive: Receive, send: Send) -> None:
-    response = PlainTextResponse(
-        "MCP sign-in is not available yet while browser sign-in is on.", status_code=401
-    )
-    await response(scope, receive, send)
-
-
 async def _watch(settings: Settings, index: Index) -> None:
     """Rescan on an interval so edits from other tools show up without a restart."""
     while True:
@@ -73,12 +66,15 @@ def create_app(
 ) -> FastAPI:
     settings = settings if settings is not None else settings_from_environment()
     services = Services(settings)
-    mcp_app = create_mcp(services).http_app(path="/")
+    holder: dict[str, SessionStore] = {}
+    verifier = StudioTokenVerifier(lambda: holder.get("store")) if settings.auth.enabled else None
+    mcp_app = create_mcp(services, auth=verifier).http_app(path="/")
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         index = Index(settings.state_dir / "index.sqlite")
         store = SessionStore(settings.state_dir / "state.sqlite")
+        holder["store"] = store
         audit = AuditLog(settings.state_dir / "audit.sqlite")
         app.state.audit = audit
         app.state.auth = auth_routes.AuthState.create(settings.auth, store, oidc_http)
@@ -115,11 +111,8 @@ def create_app(
     app.include_router(audit_routes.router)
     app.include_router(read.router, dependencies=viewer)
     app.include_router(manifests.router, dependencies=viewer)
-    if settings.auth.enabled:
-        # MCP clients cannot use the browser's session; they get OAuth in a later slice.
-        app.mount("/mcp", _refuse_without_oauth)
-    else:
-        app.mount("/mcp", mcp_app)
+    # With sign-in on, MCP requests need a studio bearer token (see auth/mcp.py).
+    app.mount("/mcp", mcp_app)
 
     if (static_dir / "index.html").is_file():
         app.mount("/", StaticFiles(directory=static_dir, html=True), name="workspace")

@@ -17,6 +17,7 @@ AUTH = parse_auth(
         "mode": "oidc",
         "issuer": ISSUER,
         "client_id": "studio",
+        "cli_client_id": "studio-cli",
         "public_url": "http://localhost",
         "roles": {"Viewer": ["viewers"], "Editor": ["editors"], "Administrator": ["admins"]},
     }
