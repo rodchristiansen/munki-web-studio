@@ -1,9 +1,10 @@
 name: Release
 
-# A tag such as v0.2.0 builds and publishes every artifact from that commit:
-# the container image (to GitHub's registry), the Python package, the Mac worker
-# installer, and a GitHub release with notes. Running it by hand builds and
-# checks everything but publishes nothing.
+# A tag such as v0.2.0 builds and publishes the artifacts from that commit: the
+# container image (to GitHub's registry), the Python package, and a GitHub
+# release with notes. Running it by hand builds and checks everything but
+# publishes nothing. CI runs only on ubuntu-latest; the Mac worker installer is
+# built on a Mac and added to the release with scripts/attach-worker-pkg.sh.
 on:
   push:
     tags: ["v*"]
@@ -53,25 +54,6 @@ jobs:
           name: python
           path: dist/
 
-  worker:
-    needs: version
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-      - run: cd web && pnpm install --frozen-lockfile && pnpm build
-      - run: packaging/macos/build-worker-pkg.sh
-      - uses: actions/upload-artifact@v4
-        with:
-          name: worker
-          path: dist/*.pkg
-
   image:
     needs: version
     runs-on: ubuntu-latest
@@ -96,7 +78,7 @@ jobs:
           echo "digest=$digest" >> "$GITHUB_OUTPUT"
 
   release:
-    needs: [version, python, worker, image]
+    needs: [version, python, image]
     if: needs.version.outputs.publish == 'true'
     runs-on: ubuntu-latest
     permissions:
@@ -114,13 +96,13 @@ jobs:
           STUDIO_IMAGE=${{ needs.image.outputs.digest }}
           \`\`\`
 
-          See docs/install.md. The Mac worker installer is unsigned; sign it with your own Developer ID Installer identity before deploying it.
+          See docs/install.md. The Mac worker installer is attached once it is built on a Mac. It is unsigned; sign it with your own Developer ID Installer identity before deploying it.
           NOTES
       - env:
           GH_TOKEN: ${{ github.token }}
         run: >
           gh release create "$GITHUB_REF_NAME" --generate-notes --notes-file notes.md
-          artifacts/python/* artifacts/worker/*
+          artifacts/python/*
 
   pypi:
     # Publishes only when the repository variable PUBLISH_PYPI is "true" and

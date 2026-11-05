@@ -61,7 +61,8 @@ To upgrade, change `STUDIO_IMAGE` to the new release's digest and run
 ## Releases
 
 Each release on GitHub lists the image digest to put in `STUDIO_IMAGE`, and
-carries the Python package and the unsigned Mac worker installer. A release
+carries the Python package. The unsigned Mac worker installer is built on a Mac
+and added with `scripts/attach-worker-pkg.sh <tag>`, since CI runs only on Linux. A release
 is made by pushing a tag `v<version>` that matches `pyproject.toml`; the
 Release workflow refuses a tag that doesn't match. Running the workflow by
 hand builds and checks everything without publishing.
