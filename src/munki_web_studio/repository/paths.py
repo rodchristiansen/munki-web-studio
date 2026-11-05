@@ -3,6 +3,7 @@
 import os
 import stat
 import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
@@ -25,6 +26,25 @@ def is_link(path: Path) -> bool:
     if stat.S_ISLNK(info.st_mode):
         return True
     return bool(getattr(info, "st_reparse_tag", 0) & _NAME_SURROGATE)
+
+
+def replace(source: Path, destination: Path) -> None:
+    """os.replace, but on Windows retried for up to about three seconds while it
+    is refused. Windows will not rename a folder while anything holds a file
+    inside it open, and a virus scanner or the search indexer briefly opens new
+    files right after they are written."""
+    delay = 0.01
+    waited = 0.0
+    while True:
+        try:
+            os.replace(source, destination)
+            return
+        except PermissionError:
+            if sys.platform != "win32" or waited >= 3:
+                raise
+        time.sleep(delay)
+        waited += delay
+        delay = min(delay * 2, 0.25)
 
 
 class PathEscapeError(ValueError):

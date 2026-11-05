@@ -31,7 +31,7 @@ from typing import Any, cast
 
 from munki_web_studio import platform
 from munki_web_studio.repository.config import Publish, Repository
-from munki_web_studio.repository.paths import is_link
+from munki_web_studio.repository.paths import is_link, replace
 
 RELEASE_FILE = ".release.json"
 CHUNK = 1 << 20
@@ -220,12 +220,12 @@ def _switch(target: Path, release: str) -> None:
         _winapi.CreateJunction(str(target / "releases" / release), str(staged))  # type: ignore[attr-defined]
         old = target / f".current-old-{secrets.token_hex(4)}"
         if current.exists() or is_link(current):
-            os.replace(current, old)
+            replace(current, old)
         try:
-            os.replace(staged, current)
+            replace(staged, current)
         except BaseException:
             if old.exists() or is_link(old):
-                os.replace(old, current)
+                replace(old, current)
             raise
         if is_link(old):
             os.rmdir(old)
@@ -287,8 +287,8 @@ def publish_repository(
             # moved aside only now that its replacement is ready.
             stale = target / "releases" / f".stale-{release}-{secrets.token_hex(4)}"
             if final.exists():
-                os.replace(final, stale)
-            os.replace(building, final)
+                replace(final, stale)
+            replace(building, final)
             shutil.rmtree(stale, ignore_errors=True)
             built = True
         finally:

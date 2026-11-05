@@ -16,6 +16,7 @@ from pathlib import Path
 
 from munki_web_studio.changes.apply import writer_lock
 from munki_web_studio.repository.config import Repository
+from munki_web_studio.repository.paths import replace
 
 TMP = ".studio-new-"
 OLD = ".studio-old-"
@@ -67,12 +68,12 @@ def swap_folder(
             _fsync_tree(staged)
             had_old = target.exists()
             if had_old:
-                os.replace(target, old)
+                replace(target, old)
             try:
-                os.replace(staged, target)
+                replace(staged, target)
             except BaseException:
                 if had_old:
-                    os.replace(old, target)
+                    replace(old, target)
                 raise
         finally:
             if staged.exists():
@@ -87,7 +88,7 @@ def recover_swaps(repo: Repository, folder: str) -> list[str]:
     target = repo.root / folder
     for leftover in sorted(repo.root.glob(f".{folder}{OLD}*")):
         if not target.exists():
-            os.replace(leftover, target)
+            replace(leftover, target)
             actions.append(f"restored {folder} from {leftover.name}")
         else:
             shutil.rmtree(leftover, ignore_errors=True)
