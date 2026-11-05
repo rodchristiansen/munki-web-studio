@@ -26,6 +26,7 @@ from munki_web_studio.changes.model import (
     change_to_json,
 )
 from munki_web_studio.changes.store import ChangeSetStore
+from munki_web_studio.codec import revision_of
 from munki_web_studio.repository.paths import PathEscapeError, normalize
 from munki_web_studio.repository.scanner import scan
 
@@ -271,7 +272,7 @@ def save_change_set(
         raise HTTPException(400, "This change set has no edits")
     journal_dir = request.app.state.journal_dir
     try:
-        commit(repo, change_set, journal_dir)
+        written = commit(repo, change_set, journal_dir)
     except ConflictError as error:
         raise HTTPException(409, {"message": str(error), "paths": error.paths}) from None
     except RecoveryNeededError as error:
@@ -279,6 +280,9 @@ def save_change_set(
     except SaveError as error:
         raise HTTPException(422, str(error)) from None
     _store(request).set_status(change_set.id, "saved")
+    _store(request).record_saved(
+        change_set.id, {p.path: revision_of(p.new_raw) for p in written if p.new_raw is not None}
+    )
     scan(repo, request.app.state.index)
     request.app.state.audit.record(
         actor=session.user.subject,

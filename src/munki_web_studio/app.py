@@ -17,6 +17,7 @@ from pydantic import BaseModel
 from munki_web_studio.api import audit as audit_routes
 from munki_web_studio.api import catalogs as catalog_routes
 from munki_web_studio.api import changes as change_routes
+from munki_web_studio.api import git as git_routes
 from munki_web_studio.api import jobs as job_routes
 from munki_web_studio.api import manifests, read
 from munki_web_studio.api import workers as worker_routes
@@ -149,6 +150,7 @@ def create_app(
     app.include_router(change_routes.fields_router, dependencies=viewer)
     app.include_router(job_routes.router)
     app.include_router(catalog_routes.router)
+    app.include_router(git_routes.router)
     app.include_router(worker_routes.router)
     app.include_router(worker_routes.settings_router)
     # With sign-in on, MCP requests need a studio bearer token (see auth/mcp.py).

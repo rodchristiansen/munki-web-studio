@@ -180,7 +180,7 @@ def test_output_matches_running_makecatalogs_directly(
     direct = tmp_path / "direct"
     shutil.copytree(REPO, direct)
     command = [str(REAL_MAKECATALOGS), "--skip-pkg-check", str(direct)]
-    subprocess.run(command, check=True, capture_output=True)  # noqa: S603
+    subprocess.run(command, check=True, capture_output=True)
     worker = worker_for(studio, Tools.probe())
     worker.hello()
     job_id = submit(studio).json()["id"]

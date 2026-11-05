@@ -459,6 +459,42 @@
         "title": "ClaimedJob",
         "type": "object"
       },
+      "CommitInfo": {
+        "properties": {
+          "commit": {
+            "title": "Commit",
+            "type": "string"
+          },
+          "paths": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Paths",
+            "type": "array"
+          }
+        },
+        "required": [
+          "commit",
+          "paths"
+        ],
+        "title": "CommitInfo",
+        "type": "object"
+      },
+      "CommitRequest": {
+        "properties": {
+          "message": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "CommitRequest",
+        "type": "object"
+      },
       "Completion": {
         "properties": {
           "artifacts": {
@@ -758,6 +794,87 @@
           "changes"
         ],
         "title": "FileEdit",
+        "type": "object"
+      },
+      "GitInfo": {
+        "properties": {
+          "ahead": {
+            "title": "Ahead",
+            "type": "integer"
+          },
+          "behind": {
+            "title": "Behind",
+            "type": "integer"
+          },
+          "branch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch"
+          },
+          "changed": {
+            "description": "Paths with changes Git has not committed",
+            "items": {
+              "type": "string"
+            },
+            "title": "Changed",
+            "type": "array"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "head": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Head"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why Git is not used for this repository",
+            "title": "Reason"
+          },
+          "upstream": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upstream"
+          }
+        },
+        "required": [
+          "enabled",
+          "reason",
+          "branch",
+          "head",
+          "upstream",
+          "ahead",
+          "behind",
+          "changed"
+        ],
+        "title": "GitInfo",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -2582,6 +2699,68 @@
         ]
       }
     },
+    "/api/repositories/{repo_id}/changesets/{change_id}/commit": {
+      "post": {
+        "description": "Commit the files a saved change set wrote, and nothing else. Refused if any\nof them changed again after the save, so the commit is exactly what was\nreviewed. Hooks do not run.",
+        "operationId": "commit_change_set_api_repositories__repo_id__changesets__change_id__commit_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repo_id",
+            "required": true,
+            "schema": {
+              "title": "Repo Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "change_id",
+            "required": true,
+            "schema": {
+              "title": "Change Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommitRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommitInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Commit Change Set",
+        "tags": [
+          "git"
+        ]
+      }
+    },
     "/api/repositories/{repo_id}/changesets/{change_id}/files/{path}": {
       "put": {
         "description": "Replace one file's edits in a draft.",
@@ -2910,6 +3089,96 @@
         "summary": "Explain Conditions",
         "tags": [
           "repositories"
+        ]
+      }
+    },
+    "/api/repositories/{repo_id}/git": {
+      "get": {
+        "description": "Branch, commit and uncommitted paths, or why Git is not used here.",
+        "operationId": "git_status_api_repositories__repo_id__git_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repo_id",
+            "required": true,
+            "schema": {
+              "title": "Repo Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GitInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Git Status",
+        "tags": [
+          "git"
+        ]
+      }
+    },
+    "/api/repositories/{repo_id}/git/push": {
+      "post": {
+        "description": "Push the current branch to its upstream. Hooks do not run.",
+        "operationId": "push_api_repositories__repo_id__git_push_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repo_id",
+            "required": true,
+            "schema": {
+              "title": "Repo Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Push Api Repositories  Repo Id  Git Push Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Push",
+        "tags": [
+          "git"
         ]
       }
     },

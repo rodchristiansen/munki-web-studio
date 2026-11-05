@@ -21,6 +21,7 @@ let files: File[];
 let open: boolean;
 let saveStatus: number;
 let sent: { method: string; path: string; body: unknown }[];
+let gitEnabled = false;
 
 const PKG = "pkgsinfo/apps/ExampleBrowser-136.0.plist";
 const MANIFEST = "manifests/site_default";
@@ -87,6 +88,13 @@ async function respond(request: Request): Promise<Response> {
         last_scan: null,
       },
     ]);
+  if (pathname.endsWith("/git"))
+    return json(
+      gitEnabled
+        ? { enabled: true, reason: null, branch: "main", head: "abc123", upstream: null, ahead: 0, behind: 0, changed: [] }
+        : { enabled: false, reason: "not a Git repository", branch: null, head: null, upstream: null, ahead: 0, behind: 0, changed: [] },
+    );
+  if (pathname.endsWith("/commit")) return json({ commit: "0123456789abcdef", paths: [PKG] });
   if (pathname === "/api/fields")
     return json({
       display_name: "string",
@@ -251,6 +259,7 @@ async function respond(request: Request): Promise<Response> {
 }
 
 beforeEach(() => {
+  gitEnabled = false;
   files = [];
   open = false;
   saveStatus = 200;
@@ -388,5 +397,20 @@ describe("editing", () => {
       await screen.findByRole("textbox", { name: "Display name" }),
     ).toHaveAttribute("readonly");
     expect(screen.getAllByText("Read-only").length).toBeGreaterThan(0);
+  });
+
+  it("offers to commit exactly the saved files when the repository uses Git", async () => {
+    gitEnabled = true;
+    render(<App />);
+    expect(await screen.findByText(/· main/)).toBeInTheDocument();
+    await userEvent.type(await screen.findByRole("textbox", { name: "Display name" }), "Committed");
+    await userEvent.tab();
+    await userEvent.click(await screen.findByRole("button", { name: /Review draft/ }));
+    await userEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Save to repository" }));
+    const dialog = await screen.findByRole("dialog", { name: "Commit the saved files" });
+    expect(within(dialog).getByText(PKG)).toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole("button", { name: "Commit" }));
+    expect(await screen.findByText("Committed 01234567 on main.")).toBeInTheDocument();
+    expect(sent.find((x) => x.path.endsWith("/commit"))?.body).toEqual({ message: "Edits" });
   });
 });

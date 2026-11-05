@@ -7,7 +7,7 @@ import { decode, encode, type Value } from "./tagged";
 export type { ChangeSetInfo, FileDraftInfo };
 
 export type SaveOutcome =
-  | { kind: "saved"; files: number }
+  | { kind: "saved"; files: number; id: string; title: string; paths: string[] }
   | { kind: "conflict"; paths: string[]; message: string }
   | { kind: "error"; message: string };
 
@@ -178,7 +178,7 @@ export function useDraft(repoId: string | undefined, enabled: boolean) {
       );
       if (data) {
         setDraft(null);
-        return { kind: "saved", files: data.files.length };
+        return { kind: "saved", files: data.files.length, id: data.id, title: data.title, paths: data.files.map((f) => f.path) };
       }
       if (response.status === 409) {
         const detail = (failure as { detail?: unknown } | undefined)?.detail;

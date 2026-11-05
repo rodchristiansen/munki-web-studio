@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, setCsrfToken, type ObjectDetail, type ObjectSummary, type Package, type RepositoryInfo, type SessionInfo } from "./api/client";
+import { api, setCsrfToken, type GitInfo, type ObjectDetail, type ObjectSummary, type Package, type RepositoryInfo, type SessionInfo } from "./api/client";
 import { Activity } from "./components/Activity";
 import { Brand } from "./components/Brand";
 import { Catalogs } from "./components/Catalogs";
+import { CommitDialog, type SavedChange } from "./components/CommitDialog";
 import { Icon } from "./components/Icon";
 import { ManifestsWorkspace } from "./components/ManifestsWorkspace";
 import { PackageEditor } from "./components/PackageEditor";
@@ -152,6 +153,15 @@ export function App() {
       .catch(() => undefined);
   }, [canEdit]);
   const draftCount = draft.draft?.files.length ?? 0;
+  const [git, setGit] = useState<GitInfo | null>(null);
+  const [committing, setCommitting] = useState<SavedChange | null>(null);
+  useEffect(() => {
+    if (!repoId) return;
+    api
+      .GET("/api/repositories/{repo_id}/git", { params: { path: { repo_id: repoId } } })
+      .then(({ data }) => setGit(data ?? null))
+      .catch(() => undefined);
+  }, [repoId, generation]);
 
   const pkgs = packages.status === "ready" ? packages.value : [];
   const selectedPath = state.path ?? pkgs[0]?.versions[pkgs[0].versions.length - 1]?.path ?? null;
@@ -184,6 +194,13 @@ export function App() {
             <strong>{repo?.name ?? "No repository"}</strong>
             <div>
               <small>{repo ? (repo.writable ? "Writable" : "Read-only") : "Not configured"}</small>
+              {git?.enabled && (
+                <small className="branch" title={git.head ?? undefined}>
+                  {" · "}
+                  {git.branch ?? "detached"}
+                  {git.changed.length ? ` · ${git.changed.length} uncommitted` : ""}
+                </small>
+              )}
             </div>
           </div>
         </div>
@@ -290,7 +307,7 @@ export function App() {
               onOpenJob={(job) => update({ area: "activity", job })}
             />
           ) : state.area === "settings" ? (
-            <Settings repo={repo} />
+            <Settings repo={repo} git={git} canPush={Boolean(session && ["Publisher", "Administrator"].includes(session.role))} onPushed={() => setGeneration((g) => g + 1)} />
           ) : state.area === "activity" && repoId ? (
             <Activity
               repoId={repoId}
@@ -355,10 +372,25 @@ export function App() {
           draft={draft}
           live={Boolean(repo?.live)}
           onClose={() => setReviewing(false)}
-          onSaved={(files) => {
+          onSaved={(saved) => {
+            const files = saved.files;
             setReviewing(false);
             setNotice(`Saved ${files} ${files === 1 ? "file" : "files"} to the repository.`);
+            if (git?.enabled) setCommitting(saved);
             void rescanNow();
+            setGeneration((g) => g + 1);
+          }}
+        />
+      )}
+      {committing && repoId && (
+        <CommitDialog
+          repoId={repoId}
+          branch={git?.branch ?? null}
+          saved={committing}
+          onClose={() => setCommitting(null)}
+          onCommitted={(commit) => {
+            setCommitting(null);
+            setNotice(`Committed ${commit.slice(0, 8)}${git?.branch ? ` on ${git.branch}` : ""}.`);
             setGeneration((g) => g + 1);
           }}
         />
