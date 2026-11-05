@@ -1,0 +1,139 @@
+name: Release
+
+# A tag such as v0.2.0 builds and publishes every artifact from that commit:
+# the container image (to GitHub's registry), the Python package, the Mac worker
+# installer, and a GitHub release with notes. Running it by hand builds and
+# checks everything but publishes nothing.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.read.outputs.version }}
+      publish: ${{ steps.read.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - id: read
+        run: |
+          version=$(uv version --short)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            [ "$GITHUB_REF_NAME" = "v$version" ] || { echo "Tag $GITHUB_REF_NAME does not match version $version in pyproject.toml" >&2; exit 1; }
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  python:
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: uv python install 3.14
+      - run: cd web && pnpm install --frozen-lockfile && pnpm build
+      - run: uv build --out-dir dist
+      - run: scripts/check-package.sh dist/*.whl "${{ needs.version.outputs.version }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: python
+          path: dist/
+
+  worker:
+    needs: version
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: cd web && pnpm install --frozen-lockfile && pnpm build
+      - run: packaging/macos/build-worker-pkg.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: worker
+          path: dist/*.pkg
+
+  image:
+    needs: version
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t studio:release .
+      - run: deploy/smoke.sh studio:release
+      - if: needs.version.outputs.publish == 'true'
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+      - id: push
+        if: needs.version.outputs.publish == 'true'
+        run: |
+          image=ghcr.io/${GITHUB_REPOSITORY,,}
+          docker tag studio:release "$image:${{ needs.version.outputs.version }}"
+          docker push "$image:${{ needs.version.outputs.version }}"
+          digest=$(docker inspect --format '{{index .RepoDigests 0}}' "$image:${{ needs.version.outputs.version }}")
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+
+  release:
+    needs: [version, python, worker, image]
+    if: needs.version.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - run: |
+          cat > notes.md <<NOTES
+          Install with the image pinned by digest:
+
+          \`\`\`
+          STUDIO_IMAGE=${{ needs.image.outputs.digest }}
+          \`\`\`
+
+          See docs/install.md. The Mac worker installer is unsigned; sign it with your own Developer ID Installer identity before deploying it.
+          NOTES
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release create "$GITHUB_REF_NAME" --generate-notes --notes-file notes.md
+          artifacts/python/* artifacts/worker/*
+
+  pypi:
+    # Publishes only when the repository variable PUBLISH_PYPI is "true" and
+    # PyPI trusts this workflow (trusted publishing; no token is stored here).
+    needs: [version, release]
+    if: needs.version.outputs.publish == 'true' && vars.PUBLISH_PYPI == 'true'
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: python
+          path: dist
+      - uses: pypa/gh-action-pypi-publish@v1.12.4

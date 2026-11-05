@@ -58,6 +58,14 @@ studio.
 To upgrade, change `STUDIO_IMAGE` to the new release's digest and run
 `docker compose up -d --wait` again.
 
+## Releases
+
+Each release on GitHub lists the image digest to put in `STUDIO_IMAGE`, and
+carries the Python package and the unsigned Mac worker installer. A release
+is made by pushing a tag `v<version>` that matches `pyproject.toml`; the
+Release workflow refuses a tag that doesn't match. Running the workflow by
+hand builds and checks everything without publishing.
+
 ## The Mac worker (optional)
 
 Catalog generation and package import run on a Mac with the Munki tools in
