@@ -1,6 +1,6 @@
 # Command line
 
-Status: proposal · 2026-11-04. This page is kept identical in Munki Web Studio
+Status: language and packaging decided 2026-11-04; commands are a proposal. This page is kept identical in Munki Web Studio
 and Cimian Web Studio.
 
 ## Three front doors, one core
@@ -18,6 +18,8 @@ they behave identically whichever door is used. A rule added for the browser
 applies to the CLI and MCP without extra work.
 
 ## Why Python for the CLI
+
+Decided 2026-11-04: Python with Typer.
 
 The CLI ships in the same Python package as the API and MCP server, so it uses
 the same adapter and surgical editor directly. A CLI in another language would
@@ -55,4 +57,5 @@ FleetMate needs no CLI of its own.
 
 ## Not yet decided
 
-- Command names. These are named when the CLI is built, not invented here.
+- Command names. Each studio has its own command, one per studio; the names
+  are chosen before the CLI is built.
