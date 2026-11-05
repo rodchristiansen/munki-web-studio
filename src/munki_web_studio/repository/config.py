@@ -27,6 +27,7 @@ class Repository:
     name: str
     root: Path
     writable: bool = False
+    live: bool = False
 
 
 LOCAL_HOSTS = ("localhost", "127.0.0.1")
@@ -80,6 +81,7 @@ def parse_settings(raw: dict[str, Any], base: Path) -> Settings:
                 name=str(item.get("name", repo_id)),
                 root=root,
                 writable=bool(item.get("writable", False)),
+                live=bool(item.get("live", False)),
             )
         )
     state = raw.get("state_dir", ".state")

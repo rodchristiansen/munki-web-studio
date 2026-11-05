@@ -100,6 +100,7 @@ def list_repositories(request: Request) -> list[RepositoryInfo]:
                 id=repo.id,
                 name=repo.name,
                 writable=repo.writable,
+                live=repo.live,
                 last_scan=_scan_summary(scan) if scan else None,
             )
         )

@@ -1117,6 +1117,12 @@
               }
             ]
           },
+          "live": {
+            "default": false,
+            "description": "Saving here changes what clients see at once",
+            "title": "Live",
+            "type": "boolean"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -1133,6 +1139,18 @@
           "last_scan"
         ],
         "title": "RepositoryInfo",
+        "type": "object"
+      },
+      "SaveRequest": {
+        "properties": {
+          "acknowledge_live": {
+            "default": false,
+            "description": "Required for a live repository: you understand clients see the change at once",
+            "title": "Acknowledge Live",
+            "type": "boolean"
+          }
+        },
+        "title": "SaveRequest",
         "type": "object"
       },
       "ScanSummary": {
@@ -2073,6 +2091,68 @@
           }
         },
         "summary": "Edit Pkginfo Fields",
+        "tags": [
+          "changes"
+        ]
+      }
+    },
+    "/api/repositories/{repo_id}/changesets/{change_id}/save": {
+      "post": {
+        "description": "Write a draft into the repository: every file or none, and only if no file\nchanged since the draft was made.",
+        "operationId": "save_change_set_api_repositories__repo_id__changesets__change_id__save_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repo_id",
+            "required": true,
+            "schema": {
+              "title": "Repo Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "change_id",
+            "required": true,
+            "schema": {
+              "title": "Change Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeSetInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Change Set",
         "tags": [
           "changes"
         ]

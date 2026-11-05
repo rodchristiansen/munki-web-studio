@@ -81,6 +81,7 @@ class RepositoryInfo(BaseModel):
     id: str
     name: str
     writable: bool
+    live: bool = Field(default=False, description="Saving here changes what clients see at once")
     last_scan: ScanSummary | None
 
 

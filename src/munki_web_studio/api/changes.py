@@ -6,11 +6,18 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from munki_web_studio import platform, tagged
+from munki_web_studio.api.audit import interface_of
 from munki_web_studio.api.read import _repo  # pyright: ignore[reportPrivateUsage]
 from munki_web_studio.auth.model import Role
 from munki_web_studio.auth.routes import require
 from munki_web_studio.auth.sessions import Session
-from munki_web_studio.changes.apply import preview
+from munki_web_studio.changes.apply import (
+    ConflictError,
+    RecoveryNeededError,
+    SaveError,
+    commit,
+    preview,
+)
 from munki_web_studio.changes.fields import FieldError, field_changes, manifest_changes, merge
 from munki_web_studio.changes.model import (
     ChangeFormatError,
@@ -22,6 +29,7 @@ from munki_web_studio.changes.store import ChangeSetStore
 from munki_web_studio.codec import ParseError, load
 from munki_web_studio.codec.model import MAX_FILE_BYTES
 from munki_web_studio.repository.paths import PathEscapeError, normalize, read_contained
+from munki_web_studio.repository.scanner import scan
 
 router = APIRouter(prefix="/api/repositories", tags=["changes"])
 Editor = Annotated[Session, Depends(require(Role.EDITOR))]
@@ -52,6 +60,13 @@ class ManifestEdit(BaseModel):
     base_revision: str = Field(description="Revision of the manifest the edits were made on")
     sections: dict[str, list[str]] = Field(
         description="Each section's complete new list, in order; an empty list removes it"
+    )
+
+
+class SaveRequest(BaseModel):
+    acknowledge_live: bool = Field(
+        default=False,
+        description="Required for a live repository: you understand clients see the change at once",
     )
 
 
@@ -271,3 +286,51 @@ def edit_manifest_sections(
     if updated is None:
         raise HTTPException(404, "No such change set")
     return _info(request, updated)
+
+
+@router.post("/{repo_id}/changesets/{change_id}/save")
+def save_change_set(
+    request: Request, repo_id: str, change_id: str, body: SaveRequest, session: Editor
+) -> ChangeSetInfo:
+    """Write a draft into the repository: every file or none, and only if no file
+    changed since the draft was made."""
+    change_set = _owned(request, session, repo_id, change_id)
+    if change_set.status != "open":
+        raise HTTPException(409, f"This change set is {change_set.status}")
+    repo = _repo(request, repo_id)
+    if not repo.writable:
+        raise HTTPException(403, "This repository is read-only in the studio's configuration")
+    if repo.live and not body.acknowledge_live:
+        raise HTTPException(
+            428, "Clients read this repository directly; confirm that the change goes live at once"
+        )
+    if not change_set.files:
+        raise HTTPException(400, "This change set has no edits")
+    journal_dir = request.app.state.journal_dir
+    try:
+        commit(repo, change_set, journal_dir)
+    except ConflictError as error:
+        raise HTTPException(409, {"message": str(error), "paths": error.paths}) from None
+    except RecoveryNeededError as error:
+        raise HTTPException(423, str(error)) from None
+    except SaveError as error:
+        raise HTTPException(422, str(error)) from None
+    _store(request).set_status(change_set.id, "saved")
+    scan(repo, request.app.state.index)
+    request.app.state.audit.record(
+        actor=session.user.subject,
+        actor_name=session.user.name,
+        interface=interface_of(request),
+        action="save",
+        repo_id=repo.id,
+        target=change_set.id,
+        detail={
+            "title": change_set.title,
+            "files": [f.path for f in change_set.files],
+            "live": repo.live,
+        },
+    )
+    saved = _store(request).get(change_set.id)
+    if saved is None:
+        raise HTTPException(404, "No such change set")
+    return _info(request, saved)

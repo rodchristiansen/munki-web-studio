@@ -70,7 +70,10 @@ def load(raw: bytes) -> Document:
 
 def edit(document: Document, changes: list[Change]) -> EditResult:
     """Return new bytes for the document with the changes applied."""
-    expected = apply_to_data(document.data, changes)
+    try:
+        expected = apply_to_data(document.data, changes)
+    except (KeyError, IndexError, TypeError, AttributeError) as error:
+        raise CodecError(f"A change does not fit this file: {error!r}") from error
     if not changes or first_difference(expected, document.data) is None:
         return EditResult(raw=document.raw, surgical=True)
 
