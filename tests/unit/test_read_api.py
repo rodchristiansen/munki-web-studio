@@ -131,3 +131,8 @@ def test_conditions_route_explains_a_manifest(client: TestClient) -> None:
             "unknown_facts": [],
         }
     ]
+
+
+def test_package_fields_come_from_the_newest_version_that_sets_them(client: TestClient) -> None:
+    browser = client.get("/api/repositories/fixture/packages/ExampleBrowser").json()
+    assert browser["category"] == "Browsers"

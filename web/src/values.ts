@@ -23,3 +23,13 @@ export function items(value: Value | undefined): string[] {
   if (value === undefined || value === null) return [];
   return Array.isArray(value) ? value.map(show) : [show(value)];
 }
+
+/** A value by key, or by dotted path into nested dictionaries (`installer.type`). */
+export function lookup(data: Dict, key: string): Value | undefined {
+  let current: Value | undefined = data;
+  for (const part of key.split(".")) {
+    if (!(current instanceof Map)) return undefined;
+    current = current.get(part);
+  }
+  return current;
+}
