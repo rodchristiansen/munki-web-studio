@@ -4,6 +4,26 @@
  */
 
 export interface paths {
+    "/api/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Audit
+         * @description Newest first. Page back with `before` set to the last id you saw.
+         */
+        get: operations["read_audit_api_audit_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -276,6 +296,31 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AuditEntryInfo */
+        AuditEntryInfo: {
+            /** Action */
+            action: string;
+            /** Actor */
+            actor: string;
+            /** Actor Name */
+            actor_name: string;
+            /** At */
+            at: string;
+            /** Detail */
+            detail: {
+                [key: string]: unknown;
+            };
+            /** Id */
+            id: number;
+            /** Interface */
+            interface: string;
+            /** Outcome */
+            outcome: string;
+            /** Repo Id */
+            repo_id: string | null;
+            /** Target */
+            target: string | null;
+        };
         /** CatalogSummary */
         CatalogSummary: {
             /** Items */
@@ -602,6 +647,38 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    read_audit_api_audit_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                before?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditEntryInfo"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     health_api_health_get: {
         parameters: {
             query?: never;
