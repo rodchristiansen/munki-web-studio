@@ -11,7 +11,7 @@ from fastapi.responses import PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from munki_web_studio.api import read
+from munki_web_studio.api import manifests, read
 from munki_web_studio.mcp import create_mcp
 from munki_web_studio.repository.config import Settings, load_settings
 from munki_web_studio.repository.index import Index
@@ -61,6 +61,7 @@ def create_app(settings: Settings | None = None, static_dir: Path = STATIC_DIR) 
         return Health(status="ok", name=STUDIO.name, version=__version__)
 
     app.include_router(read.router)
+    app.include_router(manifests.router)
     app.mount("/mcp", mcp_app)
 
     if (static_dir / "index.html").is_file():

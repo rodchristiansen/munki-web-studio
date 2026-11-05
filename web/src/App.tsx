@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, type ObjectDetail, type ObjectSummary, type Package, type RepositoryInfo } from "./api/client";
 import { Brand } from "./components/Brand";
 import { Icon } from "./components/Icon";
-import { ManifestView } from "./components/ManifestView";
+import { ManifestsWorkspace } from "./components/ManifestsWorkspace";
 import { PackageEditor } from "./components/PackageEditor";
 import { PackageList } from "./components/PackageList";
 import { readState, toSearch, type WorkspaceState } from "./url";
@@ -131,11 +131,11 @@ export function App() {
       </header>
       <div className="layout">
         <nav className="rail" aria-label="Work areas">
-          <button type="button" aria-current={state.area === "packages" ? "page" : undefined} onClick={() => update({ area: "packages" })}>
+          <button type="button" aria-current={state.area === "packages" ? "page" : undefined} onClick={() => update({ area: "packages", q: "" })}>
             <Icon name="package" />
             Packages
           </button>
-          <button type="button" aria-current={state.area === "manifests" ? "page" : undefined} onClick={() => update({ area: "manifests" })}>
+          <button type="button" aria-current={state.area === "manifests" ? "page" : undefined} onClick={() => update({ area: "manifests", q: "" })}>
             <Icon name="manifest" />
             Manifests
           </button>
@@ -150,8 +150,19 @@ export function App() {
             <Message title="Cannot reach the studio" text={repos.message} />
           ) : repos.status === "ready" && !repo ? (
             <Message title="No repository is configured" text="Add a repository to the config file and restart the studio." />
-          ) : state.area === "manifests" ? (
-            <ManifestView />
+          ) : state.area === "manifests" && repoId ? (
+            <ManifestsWorkspace
+              repoId={repoId}
+              selected={state.manifest}
+              query={state.q}
+              onSelect={(manifest) => update({ manifest })}
+              onQuery={(q) => update({ q }, "replace")}
+              onOpenPackage={(name) => {
+                const pkg = pkgs.find((p) => p.name === name);
+                const path = pkg?.versions[pkg.versions.length - 1]?.path ?? null;
+                update({ area: "packages", q: "", path });
+              }}
+            />
           ) : (
             <section aria-label="Package workspace">
               <div className="content">
