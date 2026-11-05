@@ -6,6 +6,7 @@ a catalog still lists something no pkginfo puts there) and offers the
 generation job that brings them up to date.
 """
 
+from collections import Counter
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -50,14 +51,15 @@ class CatalogDetail(CatalogSummary):
 Key = tuple[str, str]
 
 
-def _expected(index: Index, repo: Repository) -> dict[str, dict[Key, str]]:
-    """Catalog name to the (name, version) of each readable pkginfo that lists it."""
-    found: dict[str, dict[Key, str]] = {}
+def _expected(index: Index, repo: Repository) -> dict[str, list[tuple[Key, str]]]:
+    """Catalog name to (name, version) and path of each readable pkginfo that
+    lists it. Two pkginfo with the same name and version both count."""
+    found: dict[str, list[tuple[Key, str]]] = {}
     for obj in index.all(repo.id, "pkginfo"):
         if obj.status != "ok" or not obj.name:
             continue
-        for name in [*obj.catalogs, catalogs.ALL]:
-            found.setdefault(name, {})[(obj.name, obj.version or "")] = obj.path
+        for name in dict.fromkeys([*obj.catalogs, catalogs.ALL]):
+            found.setdefault(name, []).append(((obj.name, obj.version or ""), obj.path))
     return found
 
 
@@ -74,7 +76,8 @@ def _build(index: Index, repo: Repository) -> list[CatalogDetail]:
     details: list[CatalogDetail] = []
     for name in sorted({*files, *expected}, key=lambda n: (n != catalogs.ALL, n.lower())):
         obj = files.get(name)
-        wanted = expected.get(name, {})
+        wanted = expected.get(name, [])
+        paths = dict(wanted)
         error = None
         actual: list[Key] = []
         if obj is not None:
@@ -82,27 +85,25 @@ def _build(index: Index, repo: Repository) -> list[CatalogDetail]:
                 actual = _actual(repo, obj.path)
             except (ParseError, catalogs.CatalogError, PathEscapeError, OSError) as failure:
                 error = str(failure)
-        present = set(actual)
+        have, want = Counter(actual), Counter(k for k, _ in wanted)
         details.append(
             CatalogDetail(
                 name=name,
                 path=obj.path if obj else None,
                 items=len(actual),
                 expected=len(wanted),
-                up_to_date=error is None and obj is not None and present == set(wanted),
+                up_to_date=error is None and obj is not None and have == want,
                 error=error if obj is not None else "Not generated yet",
                 members=[
-                    CatalogItem(name=k[0], version=k[1], pkginfo=wanted.get(k)) for k in actual
+                    CatalogItem(name=k[0], version=k[1], pkginfo=paths.get(k)) for k in actual
                 ],
                 missing=[
-                    CatalogItem(name=k[0], version=k[1], pkginfo=p)
-                    for k, p in wanted.items()
-                    if k not in present
+                    CatalogItem(name=k[0], version=k[1], pkginfo=paths.get(k))
+                    for k in (want - have).elements()
                 ],
                 extra=[
                     CatalogItem(name=k[0], version=k[1], pkginfo=None)
-                    for k in actual
-                    if k not in wanted
+                    for k in (have - want).elements()
                 ],
             )
         )

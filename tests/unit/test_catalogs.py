@@ -159,6 +159,9 @@ def test_catalogs_view_shows_membership_and_what_is_out_of_date(
     assert listed["stale"]["expected"] == 0 and not listed["stale"]["up_to_date"]
     testing = studio.get("/api/repositories/fixture/catalogs/testing").json()
     assert testing["members"] and all(m["pkginfo"] for m in testing["members"])
+    # Both ExampleBrowser 136.0 pkginfo count, as makecatalogs lists both.
+    everything = studio.get("/api/repositories/fixture/catalogs/all").json()
+    assert everything["up_to_date"] and everything["items"] == everything["expected"] == 8
     editor = root / "pkgsinfo/apps/creative/ExampleEditor-2.10.plist"
     editor.write_bytes(
         editor.read_bytes().replace(b"<string>production</string>", b"<string>staging</string>")
