@@ -25,10 +25,12 @@ from munki_web_studio.auth.model import Role
 from munki_web_studio.auth.routes import require
 from munki_web_studio.auth.sessions import Session
 from munki_web_studio.changes.apply import SaveError
-from munki_web_studio.jobs.apply import swap_folder
+from munki_web_studio.codec import ParseError, load
+from munki_web_studio.jobs.apply import SwapAbortedError, swap_folder
 from munki_web_studio.jobs.runner import WORKER_MAX_AGE, Runner, repository_revision
 from munki_web_studio.jobs.store import Job, JobStore, LeaseLostError
-from munki_web_studio.repository.config import Settings, WorkerEntry
+from munki_web_studio.repository.config import Repository, Settings, WorkerEntry
+from munki_web_studio.repository.index import Index
 from munki_web_studio.repository.paths import PathEscapeError, normalize, read_contained
 from munki_web_studio.repository.scanner import scan
 
@@ -316,7 +318,13 @@ def complete(request: Request, job_id: str, body: Completion, worker: Worker) ->
     if spec is not None and spec.applies_to:
         try:
             result["applied"] = _apply(request, worker, job, folder / spec.outputs)
-        except (ValueError, OSError, SaveError) as error:
+        except CancelledApplyError, SwapAbortedError:
+            try:
+                cancelled = _store(request).cancelled(job.id, worker.id)
+            except LeaseLostError as lost:
+                raise HTTPException(409, str(lost)) from None
+            return {"status": cancelled.status}
+        except (ValueError, OSError, SaveError, ParseError) as error:
             message = f"The {spec.applies_to} were not replaced: {error}"
             try:
                 failed = _store(request).fail(job.id, worker.id, message)
@@ -330,6 +338,25 @@ def complete(request: Request, job_id: str, body: Completion, worker: Worker) ->
         raise HTTPException(409, str(error)) from None
     _audit(request, worker.id, "job complete", done, {"artifacts": len(body.artifacts)})
     return {"status": done.status}
+
+
+class CancelledApplyError(Exception):
+    """Cancellation was asked for before the swap."""
+
+
+def _sources(repo: Repository, index: Index) -> list[dict[str, Any]]:
+    """Every readable pkginfo as the studio reads it, to check generated catalogs by."""
+    found: list[dict[str, Any]] = []
+    for obj in index.all(repo.id, "pkginfo"):
+        if obj.status != "ok":
+            continue
+        read = read_contained(repo.root, obj.path, MAX_INPUT_FILE_BYTES)
+        if read.raw is None:
+            continue
+        data = load(read.raw).data
+        if isinstance(data, dict):
+            found.append(cast(dict[str, Any], data))
+    return found
 
 
 def _apply(request: Request, worker: WorkerEntry, job: Job, output: Path) -> dict[str, Any]:
@@ -346,10 +373,16 @@ def _apply(request: Request, worker: WorkerEntry, job: Job, output: Path) -> dic
     scan(repo, index)
     if repository_revision(index, repo) != job.input_revision:
         raise ValueError("the repository changed while the job ran; start it again")
-    summary = spec.check(output, len(index.all(repo.id, "pkginfo"))) if spec.check else {}
-    # Hold the lease for the swap, so a retry cannot start on the same job meanwhile.
-    _store(request).heartbeat(job.id, worker.id, message=f"Replacing {spec.applies_to}")
-    swap_folder(repo, spec.applies_to, output, request.app.state.journal_dir)
+    summary = spec.check(output, _sources(repo, index)) if spec.check else {}
+    store = _store(request)
+
+    def still_wanted() -> bool:
+        # Renews the lease, so a retry cannot start meanwhile, and reports a cancel.
+        return not store.heartbeat(job.id, worker.id, message=f"Replacing {spec.applies_to}")
+
+    if not still_wanted():
+        raise CancelledApplyError
+    swap_folder(repo, spec.applies_to, output, request.app.state.journal_dir, still_wanted)
     scan(repo, index)
     request.app.state.audit.record(
         actor=f"worker:{worker.id}",

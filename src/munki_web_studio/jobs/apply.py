@@ -11,6 +11,7 @@ import contextlib
 import os
 import secrets
 import shutil
+from collections.abc import Callable
 from pathlib import Path
 
 from munki_web_studio.changes.apply import writer_lock
@@ -33,7 +34,17 @@ def _fsync_tree(root: Path) -> None:
             os.close(fd)
 
 
-def swap_folder(repo: Repository, folder: str, source: Path, journal_dir: Path) -> None:
+class SwapAbortedError(Exception):
+    """The caller withdrew the swap once the lock was held."""
+
+
+def swap_folder(
+    repo: Repository,
+    folder: str,
+    source: Path,
+    journal_dir: Path,
+    proceed: Callable[[], bool] = lambda: True,
+) -> None:
     """Make `repo.root/folder` hold exactly the files in `source`, plus any hidden
     files already there (such as `.gitkeep`), which the tools leave alone too."""
     target = repo.root / folder
@@ -43,6 +54,9 @@ def swap_folder(repo: Repository, folder: str, source: Path, journal_dir: Path) 
     staged = repo.root / f".{folder}{TMP}{token}"
     old = repo.root / f".{folder}{OLD}{token}"
     with writer_lock(repo, journal_dir):
+        # Checked again under the lock: a cancel can arrive while waiting for it.
+        if not proceed():
+            raise SwapAbortedError
         shutil.copytree(source, staged, symlinks=False)
         if target.is_dir():
             for hidden in target.glob(".*"):
