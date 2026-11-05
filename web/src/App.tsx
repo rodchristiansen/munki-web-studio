@@ -7,6 +7,8 @@ import { PackageEditor } from "./components/PackageEditor";
 import { PackageList } from "./components/PackageList";
 import { readState, toSearch, type WorkspaceState } from "./url";
 
+const POLL_MS = 15_000;
+
 type Load<T> = { status: "loading" } | { status: "ready"; value: T } | { status: "error"; message: string };
 
 async function allPackages(repo: string, q: string, signal: AbortSignal): Promise<Package[]> {
@@ -45,23 +47,56 @@ export function App() {
     return () => window.removeEventListener("popstate", onPop);
   }, []);
 
+  // Poll for scans, so edits made by other tools show up while the page is open.
+  const [generation, setGeneration] = useState(0);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [lastScan, setLastScan] = useState<string | null>(null);
+
+  const loadRepos = useCallback(async (signal?: AbortSignal) => {
+    try {
+      const { data } = await api.GET("/api/repositories", { signal });
+      setRepos(data ? { status: "ready", value: data } : { status: "error", message: "Could not load repositories" });
+    } catch {
+      if (!signal?.aborted) setRepos({ status: "error", message: "The studio server is not reachable" });
+    }
+  }, []);
+
   useEffect(() => {
     const controller = new AbortController();
-    api
-      .GET("/api/repositories", { signal: controller.signal })
-      .then(({ data }) => setRepos(data ? { status: "ready", value: data } : { status: "error", message: "Could not load repositories" }))
-      .catch(() => controller.signal.aborted || setRepos({ status: "error", message: "The studio server is not reachable" }));
-    return () => controller.abort();
-  }, []);
+    void loadRepos(controller.signal);
+    const timer = window.setInterval(() => void loadRepos(controller.signal), POLL_MS);
+    return () => {
+      controller.abort();
+      window.clearInterval(timer);
+    };
+  }, [loadRepos]);
 
   const repoList = repos.status === "ready" ? repos.value : [];
   const repo = repoList.find((r) => r.id === state.repo) ?? repoList[0];
   const repoId = repo?.id;
 
+  const scan = repo?.last_scan;
+  useEffect(() => {
+    if (!scan) return;
+    const changed = scan.changed ?? [];
+    if (lastScan !== null && scan.finished_at !== lastScan && changed.length > 0) {
+      const open = [readState().path, readState().manifest].filter(Boolean);
+      if (changed.some((p) => open.includes(p))) setNotice("This file changed on disk and was reloaded.");
+      setGeneration((g) => g + 1);
+    }
+    setLastScan(scan.finished_at);
+  }, [scan, lastScan]);
+
+  async function rescanNow() {
+    if (!repoId) return;
+    await api.POST("/api/repositories/{repo_id}/rescan", { params: { path: { repo_id: repoId } } });
+    await loadRepos();
+  }
+
   useEffect(() => {
     if (!repoId) return;
     const controller = new AbortController();
-    setPackages({ status: "loading" });
+    if (generation === 0) setPackages({ status: "loading" });
     allPackages(repoId, state.q, controller.signal)
       .then((value) => setPackages({ status: "ready", value }))
       .catch((e: Error) => controller.signal.aborted || setPackages({ status: "error", message: e.message }));
@@ -73,7 +108,7 @@ export function App() {
       .then(({ data }) => setInvalid(data?.items ?? []))
       .catch(() => undefined);
     return () => controller.abort();
-  }, [repoId, state.q]);
+  }, [repoId, state.q, generation]);
 
   const pkgs = packages.status === "ready" ? packages.value : [];
   const selectedPath = state.path ?? pkgs[0]?.versions[pkgs[0].versions.length - 1]?.path ?? null;
@@ -84,7 +119,7 @@ export function App() {
       return;
     }
     const controller = new AbortController();
-    setDetail({ status: "loading" });
+    if (generation === 0) setDetail({ status: "loading" });
     api
       .GET("/api/repositories/{repo_id}/objects/{path}", {
         params: { path: { repo_id: repoId, path: selectedPath } },
@@ -93,7 +128,7 @@ export function App() {
       .then(({ data }) => setDetail(data ? { status: "ready", value: data } : { status: "error", message: "Not found" }))
       .catch(() => controller.signal.aborted || setDetail({ status: "error", message: "Could not load the file" }));
     return () => controller.abort();
-  }, [repoId, selectedPath]);
+  }, [repoId, selectedPath, generation]);
 
   const selectedPackage = pkgs.find((p) => p.versions.some((v) => v.path === selectedPath));
 
@@ -142,10 +177,22 @@ export function App() {
           <div className="rail-footer">
             <span className="connection-dot" /> {repo ? repo.name : "No repository"}
             <br />
-            <small>{repo?.last_scan ? `Scanned ${new Date(repo.last_scan.finished_at).toLocaleString()}` : "Not scanned"}</small>
+            <small>{repo?.last_scan ? `Scanned ${new Date(repo.last_scan.finished_at).toLocaleTimeString()}` : "Not scanned"}</small>
+            <br />
+            <button type="button" className="link rescan" onClick={() => void rescanNow()} disabled={!repoId}>
+              Rescan now
+            </button>
           </div>
         </nav>
         <div className="workspace">
+          {notice && (
+            <div className="notice" role="status">
+              {notice}
+              <button type="button" className="link" onClick={() => setNotice(null)}>
+                Dismiss
+              </button>
+            </div>
+          )}
           {repos.status === "error" ? (
             <Message title="Cannot reach the studio" text={repos.message} />
           ) : repos.status === "ready" && !repo ? (
@@ -153,6 +200,7 @@ export function App() {
           ) : state.area === "manifests" && repoId ? (
             <ManifestsWorkspace
               repoId={repoId}
+              generation={generation}
               selected={state.manifest}
               query={state.q}
               onSelect={(manifest) => update({ manifest })}

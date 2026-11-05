@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
 
-const repo = { id: "main", name: "Main repository", writable: false, last_scan: null };
+const repo = { id: "main", name: "Main repository", writable: false, last_scan: null as null | { started_at: string; finished_at: string; files: number; read: number; removed: number; changed: string[] } };
 const packages = [
   {
     name: "ExampleBrowser",

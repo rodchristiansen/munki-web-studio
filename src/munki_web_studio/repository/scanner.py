@@ -22,6 +22,7 @@ class ScanResult:
     removed: int = 0
     invalid: int = 0
     skipped: list[str] = field(default_factory=lambda: [])
+    changed: list[str] = field(default_factory=lambda: [])
 
 
 def _candidates(root: Path) -> list[tuple[str, str]]:
@@ -89,6 +90,7 @@ def scan(repo: Repository, index: Index, *, full: bool = False) -> ScanResult:
                 result.unchanged += 1
                 continue
             result.read += 1
+            result.changed.append(relative)
             row: dict[str, object] = {
                 "repo_id": repo.id,
                 "path": relative,
@@ -148,8 +150,9 @@ def scan(repo: Repository, index: Index, *, full: bool = False) -> ScanResult:
             "DELETE FROM objects WHERE repo_id = ? AND path = ?", [(repo.id, p) for p in gone]
         )
         result.removed = len(gone)
+        result.changed += gone
         db.execute(
-            "INSERT OR REPLACE INTO scans VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT OR REPLACE INTO scans VALUES (?, ?, ?, ?, ?, ?, ?)",
             (
                 repo.id,
                 started,
@@ -157,6 +160,8 @@ def scan(repo: Repository, index: Index, *, full: bool = False) -> ScanResult:
                 result.files,
                 result.read,
                 result.removed,
+                # Only the most recent paths; enough for a browser to spot its own file.
+                json.dumps(result.changed[:500]),
             ),
         )
     return result

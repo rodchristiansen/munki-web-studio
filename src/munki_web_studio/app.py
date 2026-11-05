@@ -1,5 +1,7 @@
 """The FastAPI application."""
 
+import asyncio
+import logging
 import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -19,6 +21,8 @@ from munki_web_studio.repository.scanner import scan
 from munki_web_studio.services import Services
 from munki_web_studio.studio import STUDIO, __version__
 
+logger = logging.getLogger(__name__)
+
 # The built browser workspace. `pnpm build` in web/ writes here.
 STATIC_DIR = Path(__file__).parent / "static"
 
@@ -37,6 +41,17 @@ def settings_from_environment() -> Settings:
     return Settings(repositories=(), state_dir=Path(".state").resolve())
 
 
+async def _watch(settings: Settings, index: Index) -> None:
+    """Rescan on an interval so edits from other tools show up without a restart."""
+    while True:
+        await asyncio.sleep(settings.rescan_seconds)
+        for repo in settings.repositories:
+            try:
+                await asyncio.to_thread(scan, repo, index)
+            except Exception:
+                logger.exception("Rescan of %s failed", repo.id)
+
+
 def create_app(settings: Settings | None = None, static_dir: Path = STATIC_DIR) -> FastAPI:
     settings = settings if settings is not None else settings_from_environment()
     services = Services(settings)
@@ -50,9 +65,16 @@ def create_app(settings: Settings | None = None, static_dir: Path = STATIC_DIR) 
         services.index = index
         for repo in settings.repositories:
             scan(repo, index)
-        async with mcp_app.lifespan(app):
-            yield
-        index.close()
+        watcher = (
+            asyncio.create_task(_watch(settings, index)) if settings.rescan_seconds > 0 else None
+        )
+        try:
+            async with mcp_app.lifespan(app):
+                yield
+        finally:
+            if watcher:
+                watcher.cancel()
+            index.close()
 
     app = FastAPI(title=STUDIO.name, version=__version__, lifespan=lifespan)
     # Refuse requests addressed to any other host name, so a web page cannot use

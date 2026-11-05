@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 # Bump when the stored fields change; an index with another version is rebuilt.
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS objects (
@@ -42,7 +42,8 @@ CREATE TABLE IF NOT EXISTS scans (
     finished_at TEXT NOT NULL,
     files INTEGER NOT NULL,
     read INTEGER NOT NULL,
-    removed INTEGER NOT NULL
+    removed INTEGER NOT NULL,
+    changed TEXT NOT NULL DEFAULT '[]'
 );
 """
 
@@ -138,7 +139,11 @@ class Index:
 
     def last_scan(self, repo_id: str) -> dict[str, Any] | None:
         row = self._db.execute("SELECT * FROM scans WHERE repo_id = ?", (repo_id,)).fetchone()
-        return dict(row) if row else None
+        if not row:
+            return None
+        scan = dict(row)
+        scan["changed"] = json.loads(scan["changed"])
+        return scan
 
 
 def _object(row: sqlite3.Row) -> IndexedObject:

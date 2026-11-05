@@ -15,6 +15,7 @@ const SECTION_LABELS: Record<string, string> = {
 
 interface Props {
   repoId: string;
+  generation: number;
   selected: string | null;
   query: string;
   onSelect: (path: string) => void;
@@ -22,7 +23,7 @@ interface Props {
   onOpenPackage: (name: string) => void;
 }
 
-export function ManifestsWorkspace({ repoId, selected, query, onSelect, onQuery, onOpenPackage }: Props) {
+export function ManifestsWorkspace({ repoId, generation, selected, query, onSelect, onQuery, onOpenPackage }: Props) {
   const [manifests, setManifests] = useState<ObjectSummary[]>([]);
   const [view, setView] = useState<ManifestView | null>(null);
 
@@ -36,7 +37,7 @@ export function ManifestsWorkspace({ repoId, selected, query, onSelect, onQuery,
       .then(({ data }) => setManifests(data?.items ?? []))
       .catch(() => undefined);
     return () => controller.abort();
-  }, [repoId, query]);
+  }, [repoId, query, generation]);
 
   const current = selected ?? manifests[0]?.path ?? null;
 
@@ -54,7 +55,7 @@ export function ManifestsWorkspace({ repoId, selected, query, onSelect, onQuery,
       .then(({ data }) => setView(data ?? null))
       .catch(() => undefined);
     return () => controller.abort();
-  }, [repoId, current]);
+  }, [repoId, current, generation]);
 
   const folders = new Map<string, ObjectSummary[]>();
   for (const m of manifests) {
