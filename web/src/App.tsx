@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, setCsrfToken, type ObjectDetail, type ObjectSummary, type Package, type RepositoryInfo, type SessionInfo } from "./api/client";
 import { Activity } from "./components/Activity";
 import { Brand } from "./components/Brand";
+import { Catalogs } from "./components/Catalogs";
 import { Icon } from "./components/Icon";
 import { ManifestsWorkspace } from "./components/ManifestsWorkspace";
 import { PackageEditor } from "./components/PackageEditor";
@@ -187,7 +188,7 @@ export function App() {
           </div>
         </div>
         <div className="workspace-title">
-          <strong>{state.area === "packages" ? "Packages" : state.area === "manifests" ? "Manifests" : state.area === "activity" ? "Activity" : "Settings"}</strong>
+          <strong>{state.area === "packages" ? "Packages" : state.area === "manifests" ? "Manifests" : state.area === "catalogs" ? "Catalogs" : state.area === "activity" ? "Activity" : "Settings"}</strong>
           <small>{state.area === "packages" && packages.status === "ready" ? `${pkgs.length} packages` : " "}</small>
         </div>
         <div className="top-actions">
@@ -225,6 +226,10 @@ export function App() {
           <button type="button" aria-current={state.area === "manifests" ? "page" : undefined} onClick={() => update({ area: "manifests", q: "" })}>
             <Icon name="manifest" />
             Manifests
+          </button>
+          <button type="button" aria-current={state.area === "catalogs" ? "page" : undefined} onClick={() => update({ area: "catalogs", q: "" })}>
+            <Icon name="grid" />
+            Catalogs
           </button>
           <button type="button" aria-current={state.area === "activity" ? "page" : undefined} onClick={() => update({ area: "activity", q: "" })}>
             <Icon name="activity" />
@@ -274,6 +279,16 @@ export function App() {
             <Message title="Cannot reach the studio" text={repos.message} />
           ) : repos.status === "ready" && !repo ? (
             <Message title="No repository is configured" text="Add a repository to the config file and restart the studio." />
+          ) : state.area === "catalogs" && repo ? (
+            <Catalogs
+              repo={repo}
+              canRun={Boolean(session && EDIT_ROLES.has(session.role))}
+              selected={state.catalog}
+              generation={generation}
+              onSelect={(catalog) => update({ catalog })}
+              onOpenPackage={(path) => update({ area: "packages", q: "", path })}
+              onOpenJob={(job) => update({ area: "activity", job })}
+            />
           ) : state.area === "settings" ? (
             <Settings repo={repo} />
           ) : state.area === "activity" && repoId ? (

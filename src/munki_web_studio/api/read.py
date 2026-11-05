@@ -6,7 +6,6 @@ from fastapi import APIRouter, HTTPException, Query, Request
 
 from munki_web_studio import conditions, tagged
 from munki_web_studio.api.models import (
-    CatalogSummary,
     ConditionInfo,
     Diagnostic,
     ObjectDetail,
@@ -212,33 +211,6 @@ def get_object(request: Request, repo_id: str, path: str) -> ObjectDetail:
     detail.revision = document.revision
     detail.data = tagged.encode(document.data)
     return detail
-
-
-@router.get("/{repo_id}/catalogs")
-def list_catalogs(request: Request, repo_id: str) -> list[CatalogSummary]:
-    """Catalog names from pkginfo membership, with how many pkginfo list each."""
-    repo = _repo(request, repo_id)
-    counts: dict[str, int] = {}
-    for obj in _index(request).all(repo.id, "pkginfo"):
-        if obj.status == "ok":
-            for name in obj.catalogs:
-                counts[name] = counts.get(name, 0) + 1
-    return [CatalogSummary(name=n, items=counts[n]) for n in sorted(counts)]
-
-
-@router.get("/{repo_id}/catalogs/{name}")
-def get_catalog(
-    request: Request, repo_id: str, name: str, limit: Limit = 100, offset: Offset = 0
-) -> ObjectPage:
-    """The pkginfo files that list this catalog."""
-    repo = _repo(request, repo_id)
-    found = [
-        o
-        for o in _index(request).all(repo.id, "pkginfo")
-        if o.status == "ok" and name in o.catalogs
-    ]
-    items = [_summary(o) for o in found[offset : offset + limit]]
-    return ObjectPage(items=items, total=len(found), limit=limit, offset=offset)
 
 
 @router.get("/{repo_id}/where-used/{name}")

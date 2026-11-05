@@ -61,11 +61,6 @@ class ObjectDetail(ObjectSummary):
     )
 
 
-class CatalogSummary(BaseModel):
-    name: str
-    items: int
-
-
 class ScanSummary(BaseModel):
     started_at: str
     finished_at: str

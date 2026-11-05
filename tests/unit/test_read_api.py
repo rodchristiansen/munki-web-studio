@@ -81,12 +81,11 @@ def test_invalid_objects_are_listed_with_diagnostics(client: TestClient) -> None
 def test_manifests_and_catalogs(client: TestClient) -> None:
     manifests = client.get("/api/repositories/fixture/objects", params={"kind": "manifest"}).json()
     assert "manifests/groups/design-lab" in {o["path"] for o in manifests["items"]}
-    catalogs = {
-        c["name"]: c["items"] for c in client.get("/api/repositories/fixture/catalogs").json()
-    }
-    assert set(catalogs) == {"testing", "production"}
+    catalogs = {c["name"]: c for c in client.get("/api/repositories/fixture/catalogs").json()}
+    assert set(catalogs) == {"all", "testing", "production"}
+    assert all(c["up_to_date"] for c in catalogs.values())
     production = client.get("/api/repositories/fixture/catalogs/production").json()
-    assert production["total"] == catalogs["production"]
+    assert len(production["members"]) == catalogs["production"]["items"]
 
 
 @pytest.mark.parametrize(

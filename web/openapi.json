@@ -206,8 +206,129 @@
         "title": "BeatReply",
         "type": "object"
       },
+      "CatalogDetail": {
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "expected": {
+            "title": "Expected",
+            "type": "integer"
+          },
+          "extra": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogItem"
+            },
+            "title": "Extra",
+            "type": "array"
+          },
+          "items": {
+            "title": "Items",
+            "type": "integer"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogItem"
+            },
+            "title": "Members",
+            "type": "array"
+          },
+          "missing": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogItem"
+            },
+            "title": "Missing",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path"
+          },
+          "up_to_date": {
+            "title": "Up To Date",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "path",
+          "items",
+          "expected",
+          "up_to_date",
+          "error",
+          "members",
+          "missing",
+          "extra"
+        ],
+        "title": "CatalogDetail",
+        "type": "object"
+      },
+      "CatalogItem": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "pkginfo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pkginfo"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "version",
+          "pkginfo"
+        ],
+        "title": "CatalogItem",
+        "type": "object"
+      },
       "CatalogSummary": {
         "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "expected": {
+            "title": "Expected",
+            "type": "integer"
+          },
           "items": {
             "title": "Items",
             "type": "integer"
@@ -215,11 +336,30 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path"
+          },
+          "up_to_date": {
+            "title": "Up To Date",
+            "type": "boolean"
           }
         },
         "required": [
           "name",
-          "items"
+          "path",
+          "items",
+          "expected",
+          "up_to_date",
+          "error"
         ],
         "title": "CatalogSummary",
         "type": "object"
@@ -2147,7 +2287,7 @@
     },
     "/api/repositories/{repo_id}/catalogs": {
       "get": {
-        "description": "Catalog names from pkginfo membership, with how many pkginfo list each.",
+        "description": "Every catalog on disk or named by a pkginfo, and whether it is up to date.",
         "operationId": "list_catalogs_api_repositories__repo_id__catalogs_get",
         "parameters": [
           {
@@ -2188,13 +2328,13 @@
         },
         "summary": "List Catalogs",
         "tags": [
-          "repositories"
+          "catalogs"
         ]
       }
     },
     "/api/repositories/{repo_id}/catalogs/{name}": {
       "get": {
-        "description": "The pkginfo files that list this catalog.",
+        "description": "One catalog's members, and what generating catalogs would add or remove.",
         "operationId": "get_catalog_api_repositories__repo_id__catalogs__name__get",
         "parameters": [
           {
@@ -2214,29 +2354,6 @@
               "title": "Name",
               "type": "string"
             }
-          },
-          {
-            "in": "query",
-            "name": "limit",
-            "required": false,
-            "schema": {
-              "default": 100,
-              "maximum": 500,
-              "minimum": 1,
-              "title": "Limit",
-              "type": "integer"
-            }
-          },
-          {
-            "in": "query",
-            "name": "offset",
-            "required": false,
-            "schema": {
-              "default": 0,
-              "minimum": 0,
-              "title": "Offset",
-              "type": "integer"
-            }
           }
         ],
         "responses": {
@@ -2244,7 +2361,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ObjectPage"
+                  "$ref": "#/components/schemas/CatalogDetail"
                 }
               }
             },
@@ -2263,7 +2380,7 @@
         },
         "summary": "Get Catalog",
         "tags": [
-          "repositories"
+          "catalogs"
         ]
       }
     },
