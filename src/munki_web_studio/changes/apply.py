@@ -70,9 +70,13 @@ class RecoveryReport:
     conflicts: list[str]
 
 
+# Formats whose bytes are not text, so a line diff means nothing.
+BINARY_FORMATS: frozenset[str] = frozenset({"binary-plist"})
+
+
 def _diff(path: str, before: bytes, after: bytes, fmt: Format) -> str:
-    if fmt is Format.BINARY_PLIST:
-        return f"{path}: binary property list rewritten ({len(before)} → {len(after)} bytes)"
+    if fmt.value in BINARY_FORMATS:
+        return f"{path}: binary file rewritten ({len(before)} → {len(after)} bytes)"
     lines = difflib.unified_diff(
         before.decode("utf-8", "replace").splitlines(keepends=True),
         after.decode("utf-8", "replace").splitlines(keepends=True),
