@@ -5,10 +5,11 @@ Maintenance contributions to upstream MWA2 are a separate effort.
 
 ## Project state
 
-Planning only. Read `docs/plan.md`, `docs/architecture.md`,
-`docs/infrastructure.md`, and `docs/design.md` before implementation.
-Recommendations in those documents remain proposals until explicitly accepted.
-Do not describe the design prototype as a functioning repository editor.
+Planning is done; the build follows `docs/build-plan.md` and the `slice` issues.
+Before building, read the issue and the docs it touches: `docs/plan.md`,
+`docs/architecture.md`, `docs/infrastructure.md`, `docs/design.md`, and the
+decided pages (`backend.md`, `hosting.md`, `mcp.md`, `cli.md`). Do not describe
+the design prototype as a functioning repository editor.
 
 ## Worktrees and delivery
 
