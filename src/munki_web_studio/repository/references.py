@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from munki_web_studio import platform
+from munki_web_studio import conditions, platform
 from munki_web_studio.repository.config import Repository
 from munki_web_studio.repository.index import Index, IndexedObject
 from munki_web_studio.repository.paths import PathEscapeError, contained
@@ -107,6 +107,12 @@ class Graph:
         return cycles
 
 
+def object_conditions(graph: Graph, obj: IndexedObject) -> list[str]:
+    """Each distinct condition an object uses, in order of first appearance."""
+    found = [r.condition for r in graph.references(obj) if r.condition]
+    return list(dict.fromkeys(found))
+
+
 def manifest_name(path: str) -> str:
     """Manifests refer to each other by path under manifests/, without extension
     for Munki and with it optional for Cimian."""
@@ -163,6 +169,34 @@ def validate(index: Index, repo: Repository) -> list[Issue]:
                         f"Payload {payload!r} is missing",
                         "payload",
                         payload,
+                    )
+                )
+    for obj in graph.objects:
+        if obj.status != "ok":
+            continue
+        for text in object_conditions(graph, obj):
+            report = conditions.analyze(text)
+            if report.error:
+                issues.append(
+                    Issue(
+                        "error",
+                        "condition-syntax",
+                        obj.path,
+                        f"Condition {text!r}: {report.error} at column {report.column}",
+                        "condition",
+                        text,
+                    )
+                )
+            for fact in report.unknown_facts:
+                issues.append(
+                    Issue(
+                        "warning",
+                        "unknown-fact",
+                        obj.path,
+                        f"Condition uses {fact!r}, which is not a built-in fact; "
+                        "a condition script must provide it",
+                        "condition",
+                        fact,
                     )
                 )
     for cycle in graph.include_cycles():

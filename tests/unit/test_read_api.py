@@ -117,3 +117,17 @@ def test_where_used_and_validation_routes(client: TestClient) -> None:
     assert {"parse-error", "missing-package", "include-cycle"} <= {
         i["code"] for i in report["issues"]
     }
+
+
+def test_conditions_route_explains_a_manifest(client: TestClient) -> None:
+    rules = client.get("/api/repositories/fixture/conditions/manifests/groups/design-lab").json()
+    assert rules == [
+        {
+            "text": 'machine_type == "laptop" AND os_vers_major >= 14',
+            "rule": 'machine type is "laptop" and macOS major version is at least 14',
+            "error": None,
+            "column": None,
+            "facts": ["machine_type", "os_vers_major"],
+            "unknown_facts": [],
+        }
+    ]

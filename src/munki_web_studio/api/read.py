@@ -4,9 +4,10 @@ from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, Request
 
-from munki_web_studio import tagged
+from munki_web_studio import conditions, tagged
 from munki_web_studio.api.models import (
     CatalogSummary,
+    ConditionInfo,
     Diagnostic,
     ObjectDetail,
     ObjectPage,
@@ -25,7 +26,7 @@ from munki_web_studio.codec.model import MAX_FILE_BYTES
 from munki_web_studio.repository.config import Repository, Settings
 from munki_web_studio.repository.index import Index, IndexedObject
 from munki_web_studio.repository.paths import PathEscapeError, normalize, read_contained
-from munki_web_studio.repository.references import graph_for, validate
+from munki_web_studio.repository.references import graph_for, object_conditions, validate
 
 router = APIRouter(prefix="/api/repositories", tags=["repositories"])
 
@@ -243,3 +244,18 @@ def validation(request: Request, repo_id: str) -> ValidationReport:
     issues = [ValidationIssue(**vars(i)) for i in validate(_index(request), repo)]
     errors = sum(1 for i in issues if i.severity == "error")
     return ValidationReport(errors=errors, warnings=len(issues) - errors, issues=issues)
+
+
+@router.get("/{repo_id}/conditions/{path:path}")
+def explain_conditions(request: Request, repo_id: str, path: str) -> list[ConditionInfo]:
+    """Every condition in one manifest, as a readable rule or a located error."""
+    repo = _repo(request, repo_id)
+    try:
+        relative = normalize(path)
+    except PathEscapeError:
+        raise HTTPException(400, "Invalid path") from None
+    obj = _index(request).get(repo.id, relative)
+    if obj is None:
+        raise HTTPException(404, f"No object at {relative!r}")
+    graph = graph_for(_index(request), repo)
+    return [ConditionInfo(**vars(conditions.analyze(t))) for t in object_conditions(graph, obj)]
