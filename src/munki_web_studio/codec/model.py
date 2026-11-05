@@ -92,23 +92,26 @@ def check_bounds(data: Any) -> None:
     """Reject data that is too deep, too large, or contains a cycle.
 
     Shared references are counted every time they are reached, so a small file
-    that expands into a huge tree is rejected too.
+    that expands into a huge tree is rejected too. Loading itself stays small:
+    YAML aliases are refused before loading, and plistlib keeps a binary plist's
+    shared objects shared, so memory is bounded by the file size cap.
     """
-    nodes = 0
+    nodes = 1
     stack: list[tuple[Any, int]] = [(data, 0)]
     while stack:
         value, depth = stack.pop()
-        nodes += 1
-        if nodes > MAX_NODES:
-            raise ParseError(f"File expands to more than {MAX_NODES} values")
         if depth > MAX_DEPTH:
             raise ParseError(f"Nesting deeper than {MAX_DEPTH} levels")
         if isinstance(value, dict):
-            children = cast(dict[Any, Any], value).values()
+            children = list(cast(dict[Any, Any], value).values())
         elif isinstance(value, list):
             children = cast(list[Any], value)
         else:
             continue
+        # Count before queueing, so the walk itself never holds more than the cap.
+        nodes += len(children)
+        if nodes > MAX_NODES:
+            raise ParseError(f"File expands to more than {MAX_NODES} values")
         stack.extend((child, depth + 1) for child in children)
 
 
