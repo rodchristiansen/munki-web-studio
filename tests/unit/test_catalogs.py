@@ -202,6 +202,12 @@ def test_output_matches_running_makecatalogs_directly(
         ("", 'catalogs["everyone"] = []', "not a catalog any pkginfo names"),
         ("", 'del catalogs["production"]', "No catalog was generated for production"),
         ("", 'catalogs["testing"].append(catalogs["testing"][0])', "does not match any pkginfo"),
+        (
+            'item["unattended_install"] = 1 if item.get("unattended_install") is True else '
+            'item.get("unattended_install")',
+            "",
+            "does not match any pkginfo",
+        ),
     ],
 )
 def test_a_worker_cannot_change_what_clients_install(
@@ -237,3 +243,59 @@ def test_cancelling_before_the_swap_keeps_the_last_catalogs(
     assert worker.run_once()
     wait_for(studio, job_id, "cancelled")
     assert tree(root / "catalogs") == before
+
+
+@posix_only
+@pytest.mark.parametrize(
+    "rewrite,reason",
+    [
+        (
+            "data.decode().replace('<dict>', '<dict>\\n<!-- note -->', 1).encode()",
+            "form makecatalogs",
+        ),
+        ("b'- name: Example\\n'", "not an XML plist"),
+        ("plistlib.dumps(plistlib.loads(data), fmt=plistlib.FMT_BINARY)", "not an XML plist"),
+    ],
+)
+def test_catalogs_must_be_exactly_what_makecatalogs_writes(
+    studio: TestClient, tmp_path: Path, root: Path, rewrite: str, reason: str
+) -> None:
+    before = tree(root / "catalogs")
+    extra = (
+        'out = staging / "catalogs"\n'
+        "out.mkdir()\n"
+        "for name, items in catalogs.items():\n"
+        "    data = plistlib.dumps(items)\n"
+        f"    (out / name).write_bytes({rewrite} if name == 'production' else data)\n"
+        "sys.exit(0)"
+    )
+    worker = worker_for(studio, only(tmp_path, fake(extra=extra)))
+    worker.hello()
+    job_id = submit(studio).json()["id"]
+    assert worker.run_once()
+    error = wait_for(studio, job_id, "failed")["error"]
+    assert "production cannot be read" in error and reason in error
+    assert tree(root / "catalogs") == before
+
+
+@posix_only
+def test_an_artifact_rewritten_after_the_check_is_not_what_gets_applied(
+    studio: TestClient, tmp_path: Path, root: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from munki_web_studio.api import workers
+
+    worker = worker_for(studio, only(tmp_path, FAKE_TOOL))
+    worker.hello()
+    job_id = submit(studio).json()["id"]
+    checked = workers._sources  # pyright: ignore[reportPrivateUsage]
+    uploaded = tmp_path / "state" / "artifacts" / job_id / "catalogs" / "production"
+
+    def rewrite_during_check(repo: Any, index: Any) -> Any:
+        uploaded.write_bytes(uploaded.read_bytes().replace(b"ExampleEditor", b"EvilEditor"))
+        return checked(repo, index)
+
+    monkeypatch.setattr(workers, "_sources", rewrite_during_check)
+    assert worker.run_once()
+    wait_for(studio, job_id, "succeeded")
+    applied = (root / "catalogs" / "production").read_bytes()
+    assert b"EvilEditor" not in applied and b"ExampleEditor" in applied

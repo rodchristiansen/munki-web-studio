@@ -11,6 +11,8 @@ import contextlib
 import hashlib
 import hmac
 import io
+import secrets
+import shutil
 import tarfile
 from pathlib import Path
 from typing import Annotated, Any, cast
@@ -317,7 +319,13 @@ def complete(request: Request, job_id: str, body: Completion, worker: Worker) ->
     spec = _runner(request).operations[job.operation].remote
     if spec is not None and spec.applies_to:
         try:
-            result["applied"] = _apply(request, worker, job, folder / spec.outputs)
+            private = _private_copy(
+                request, job, folder / spec.outputs, body.artifacts, spec.outputs
+            )
+            try:
+                result["applied"] = _apply(request, worker, job, private)
+            finally:
+                shutil.rmtree(private.parent, ignore_errors=True)
         except CancelledApplyError, SwapAbortedError:
             try:
                 cancelled = _store(request).cancelled(job.id, worker.id)
@@ -338,6 +346,28 @@ def complete(request: Request, job_id: str, body: Completion, worker: Worker) ->
         raise HTTPException(409, str(error)) from None
     _audit(request, worker.id, "job complete", done, {"artifacts": len(body.artifacts)})
     return {"status": done.status}
+
+
+def _private_copy(
+    request: Request, job: Job, output: Path, artifacts: list[Artifact], prefix: str
+) -> Path:
+    """Copy the outputs where uploads cannot reach, checking each hash again, so
+    the files that pass the check are the files that are swapped in."""
+    target = request.app.state.settings.state_dir / "applying" / f"{job.id}-{secrets.token_hex(4)}"
+    copy = target / prefix
+    copy.mkdir(parents=True)
+    wanted = {a.path: a.sha256.lower() for a in artifacts}
+    for path in sorted(output.rglob("*")) if output.is_dir() else []:
+        if path.is_symlink() or not path.is_file():
+            continue
+        relative = f"{prefix}/{path.relative_to(output).as_posix()}"
+        data = path.read_bytes()
+        if wanted.get(relative) != hashlib.sha256(data).hexdigest():
+            raise ValueError(f"{relative} changed after it was uploaded")
+        destination = copy / path.relative_to(output)
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(data)
+    return copy
 
 
 class CancelledApplyError(Exception):

@@ -90,8 +90,11 @@ items still in a catalog that no pkginfo puts there. Generate catalogs runs
 at the revision it was started on. The studio does not trust the
 worker with what clients install. It compares every catalog entry with its own
 reading of the pkginfo, field for field, allowing only the keys `makecatalogs`
-drops (`notes`, `_metadata`) or adds (`loop_fingerprint`). Each catalog must
-hold exactly the pkginfo that list it, and no other catalog may appear. Then it
+drops (`notes`, `_metadata`) or adds (`loop_fingerprint`). Values must match in type too,
+so `true` never passes for `1`. Each catalog must hold exactly the pkginfo that
+list it, no other catalog may appear, and every file must be an XML plist in
+exactly the form `makecatalogs` writes. The check and the swap use the same
+private copy of the files, so nothing uploaded afterwards is applied. Then it
 swaps the catalogs into `catalogs/` in one step, removing stale
 catalogs as `makecatalogs` does and keeping hidden files such as `.gitkeep`. If
 the tool fails, the output fails the check, the job is cancelled, or the
