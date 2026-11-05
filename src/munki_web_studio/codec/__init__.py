@@ -10,6 +10,7 @@ from typing import Any
 
 from munki_web_studio.codec import plistfile, yamlfile
 from munki_web_studio.codec.model import (
+    MAX_FILE_BYTES,
     Append,
     Change,
     CodecError,
@@ -20,6 +21,7 @@ from munki_web_studio.codec.model import (
     ParseError,
     Set,
     apply_to_data,
+    check_bounds,
     first_difference,
     revision_of,
 )
@@ -51,10 +53,17 @@ def detect_format(raw: bytes) -> Format:
 
 
 def _parse(raw: bytes, fmt: Format) -> Any:
-    return yamlfile.load(raw) if fmt is Format.YAML else plistfile.load(raw)
+    try:
+        data = yamlfile.load(raw) if fmt is Format.YAML else plistfile.load(raw)
+    except RecursionError as error:
+        raise ParseError("Nesting is too deep to read") from error
+    check_bounds(data)
+    return data
 
 
 def load(raw: bytes) -> Document:
+    if len(raw) > MAX_FILE_BYTES:
+        raise ParseError(f"File is larger than {MAX_FILE_BYTES // (1024 * 1024)} MB")
     fmt = detect_format(raw)
     return Document(raw=raw, format=fmt, data=_parse(raw, fmt))
 
