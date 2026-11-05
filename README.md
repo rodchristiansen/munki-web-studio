@@ -67,10 +67,12 @@ over https or ssh only.
 
 Git never runs anything the repository names. Every command ignores the system
 and global Git config and points hooks at an empty folder. It also turns off the
-fsmonitor, pager, editor, credential helpers, external diffs and signing. A
-repository whose own config sets a filter, a diff textconv, an ssh command, a
-credential helper or an include is left alone, and Settings names the setting
-that stopped it. A repository that is not a Git working tree works exactly as
+fsmonitor, pager, editor, credential helpers, external diffs and signing. The
+studio accepts only a fixed list of ordinary repository settings (line endings,
+branches and remotes, user name, Husky's hooks path, and similar). A repository
+whose own config, local or per-worktree, sets anything else is left alone, and
+Settings names the setting that stopped it. Credentials in remote URLs never
+appear in error messages. A repository that is not a Git working tree works exactly as
 before.
 
 ## Jobs
