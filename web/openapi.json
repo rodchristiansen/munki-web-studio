@@ -349,6 +349,27 @@
         "title": "Diagnostic",
         "type": "object"
       },
+      "FieldEdit": {
+        "properties": {
+          "base_revision": {
+            "description": "Revision of the pkginfo the edits were made on",
+            "title": "Base Revision",
+            "type": "string"
+          },
+          "fields": {
+            "additionalProperties": true,
+            "description": "Field values as tagged JSON; null removes a field. GET /api/fields lists them.",
+            "title": "Fields",
+            "type": "object"
+          }
+        },
+        "required": [
+          "base_revision",
+          "fields"
+        ],
+        "title": "FieldEdit",
+        "type": "object"
+      },
       "FileDraftInfo": {
         "properties": {
           "base_revision": {
@@ -1429,6 +1450,32 @@
         ]
       }
     },
+    "/api/fields": {
+      "get": {
+        "description": "The pkginfo fields the editor can set, and the type each takes.",
+        "operationId": "editable_fields_api_fields_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Editable Fields Api Fields Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Editable Fields",
+        "tags": [
+          "changes"
+        ]
+      }
+    },
     "/api/health": {
       "get": {
         "operationId": "health_api_health_get",
@@ -1858,6 +1905,77 @@
           }
         },
         "summary": "Put File Edits",
+        "tags": [
+          "changes"
+        ]
+      }
+    },
+    "/api/repositories/{repo_id}/changesets/{change_id}/pkginfo/{path}": {
+      "patch": {
+        "description": "Edit named pkginfo fields in a draft. Values are checked against the field's\ntype, unchanged values are ignored, and earlier edits to the same fields are\nreplaced.",
+        "operationId": "edit_pkginfo_fields_api_repositories__repo_id__changesets__change_id__pkginfo__path__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repo_id",
+            "required": true,
+            "schema": {
+              "title": "Repo Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "change_id",
+            "required": true,
+            "schema": {
+              "title": "Change Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FieldEdit"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeSetInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Edit Pkginfo Fields",
         "tags": [
           "changes"
         ]

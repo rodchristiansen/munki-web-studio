@@ -5,11 +5,13 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from munki_web_studio import platform, tagged
 from munki_web_studio.api.read import _repo  # pyright: ignore[reportPrivateUsage]
 from munki_web_studio.auth.model import Role
 from munki_web_studio.auth.routes import require
 from munki_web_studio.auth.sessions import Session
 from munki_web_studio.changes.apply import preview
+from munki_web_studio.changes.fields import FieldError, field_changes, merge
 from munki_web_studio.changes.model import (
     ChangeFormatError,
     ChangeSet,
@@ -17,7 +19,9 @@ from munki_web_studio.changes.model import (
     change_to_json,
 )
 from munki_web_studio.changes.store import ChangeSetStore
-from munki_web_studio.repository.paths import PathEscapeError, normalize
+from munki_web_studio.codec import ParseError, load
+from munki_web_studio.codec.model import MAX_FILE_BYTES
+from munki_web_studio.repository.paths import PathEscapeError, normalize, read_contained
 
 router = APIRouter(prefix="/api/repositories", tags=["changes"])
 Editor = Annotated[Session, Depends(require(Role.EDITOR))]
@@ -34,6 +38,13 @@ class FileEdit(BaseModel):
             "Edits: {op: set|append|delete, path: [...], value: tagged JSON}; "
             "an empty list removes the file from the draft"
         )
+    )
+
+
+class FieldEdit(BaseModel):
+    base_revision: str = Field(description="Revision of the pkginfo the edits were made on")
+    fields: dict[str, Any] = Field(
+        description="Field values as tagged JSON; null removes a field. GET /api/fields lists them."
     )
 
 
@@ -161,3 +172,53 @@ def discard_change_set(
     if discarded is None:
         raise HTTPException(404, "No such change set")
     return _info(request, discarded)
+
+
+@router.patch("/{repo_id}/changesets/{change_id}/pkginfo/{path:path}")
+def edit_pkginfo_fields(
+    request: Request, repo_id: str, change_id: str, path: str, body: FieldEdit, session: Editor
+) -> ChangeSetInfo:
+    """Edit named pkginfo fields in a draft. Values are checked against the field's
+    type, unchanged values are ignored, and earlier edits to the same fields are
+    replaced."""
+    change_set = _owned(request, session, repo_id, change_id)
+    if change_set.status != "open":
+        raise HTTPException(409, f"This change set is {change_set.status}")
+    repo = _repo(request, repo_id)
+    try:
+        relative = normalize(path)
+    except PathEscapeError:
+        raise HTTPException(400, "Invalid path") from None
+    obj = request.app.state.index.get(repo.id, relative)
+    if obj is None or obj.kind != "pkginfo" or obj.status != "ok":
+        raise HTTPException(404, f"No readable pkginfo at {relative!r}")
+    try:
+        read = read_contained(repo.root, relative, MAX_FILE_BYTES)
+        if read.raw is None:
+            raise HTTPException(413, "File is too large")
+        document = load(read.raw)
+    except (PathEscapeError, ParseError, OSError) as error:
+        raise HTTPException(409, str(error)) from None
+    if document.revision != body.base_revision:
+        raise HTTPException(409, "The file changed since you opened it; reload and edit again")
+    try:
+        new = field_changes(document.data, {k: tagged.decode(v) for k, v in body.fields.items()})
+    except (FieldError, ValueError, TypeError) as error:
+        raise HTTPException(400, str(error)) from None
+    previous = next((f for f in change_set.files if f.path == relative), None)
+    touched = [tuple(name.split(".")) for name in body.fields]
+    combined = merge(previous.changes if previous else [], new, touched)
+    _store(request).put_file(change_set.id, relative, body.base_revision, combined)
+    updated = _store(request).get(change_set.id)
+    if updated is None:
+        raise HTTPException(404, "No such change set")
+    return _info(request, updated)
+
+
+fields_router = APIRouter(prefix="/api", tags=["changes"])
+
+
+@fields_router.get("/fields")
+def editable_fields() -> dict[str, str]:
+    """The pkginfo fields the editor can set, and the type each takes."""
+    return dict(platform.PKGINFO_FIELDS)

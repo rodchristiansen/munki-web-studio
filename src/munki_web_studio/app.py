@@ -126,6 +126,7 @@ def create_app(
     app.include_router(read.router, dependencies=viewer)
     app.include_router(manifests.router, dependencies=viewer)
     app.include_router(change_routes.router)
+    app.include_router(change_routes.fields_router, dependencies=viewer)
     # With sign-in on, MCP requests need a studio bearer token (see auth/mcp.py).
     app.mount("/mcp", mcp_app)
 
