@@ -1,0 +1,35 @@
+#!/bin/sh
+# Create the worker's own user and group, protect its token, and (re)load the
+# daemon. The worker never runs as root.
+set -eu
+prefix=/usr/local/munki-web-studio-worker
+label=io.github.rodchristiansen.munki-web-studio.worker
+if [ "$3" != "/" ]; then exit 0; fi
+if ! dscl . -read /Groups/_mwsworker >/dev/null 2>&1; then
+  gid=$(dscl . -list /Groups PrimaryGroupID | awk '$2 >= 400 && $2 < 500 {print $2}' | sort -n | awk 'BEGIN{n=400} $1==n{n++} END{print n}')
+  dscl . -create /Groups/_mwsworker PrimaryGroupID "$gid"
+  dscl . -create /Groups/_mwsworker RealName "Munki Web Studio worker"
+fi
+gid=$(dscl . -read /Groups/_mwsworker PrimaryGroupID | awk '{print $2}')
+if ! dscl . -read /Users/_mwsworker >/dev/null 2>&1; then
+  uid=$(dscl . -list /Users UniqueID | awk '$2 >= 400 && $2 < 500 {print $2}' | sort -n | awk 'BEGIN{n=400} $1==n{n++} END{print n}')
+  dscl . -create /Users/_mwsworker UniqueID "$uid"
+  dscl . -create /Users/_mwsworker PrimaryGroupID "$gid"
+  dscl . -create /Users/_mwsworker UserShell /usr/bin/false
+  dscl . -create /Users/_mwsworker NFSHomeDirectory /var/empty
+  dscl . -create /Users/_mwsworker RealName "Munki Web Studio worker"
+  dscl . -create /Users/_mwsworker IsHidden 1
+fi
+chown -R root:wheel "$prefix"
+touch "$prefix/worker.token"
+chown _mwsworker:_mwsworker "$prefix/worker.token"
+chmod 600 "$prefix/worker.token"
+touch /Library/Logs/munki-web-studio-worker.log
+chown _mwsworker:_mwsworker /Library/Logs/munki-web-studio-worker.log
+plist="/Library/LaunchDaemons/$label.plist"
+chown root:wheel "$plist"
+chmod 644 "$plist"
+launchctl bootout system "$plist" 2>/dev/null || true
+if [ -f "$prefix/worker.conf" ] && [ -s "$prefix/worker.token" ]; then
+  launchctl bootstrap system "$plist"
+fi

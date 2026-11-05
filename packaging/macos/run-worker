@@ -1,0 +1,16 @@
+#!/bin/sh
+# Started by launchd. Reads the studio address and worker id from worker.conf
+# next to this script; the token stays in worker.token, readable only by
+# the worker's user.
+set -eu
+here=$(cd "$(dirname "$0")" && pwd)
+if [ ! -f "$here/worker.conf" ]; then
+  echo "Copy worker.conf.example to worker.conf and fill it in" >&2
+  exit 78
+fi
+STUDIO_URL=""
+WORKER_ID=""
+# shellcheck source=/dev/null
+. "$here/worker.conf"
+[ -n "$STUDIO_URL" ] && [ -n "$WORKER_ID" ] || { echo "worker.conf needs STUDIO_URL and WORKER_ID" >&2; exit 78; }
+exec "$here/venv/bin/mwsctl" worker run --url "$STUDIO_URL" --id "$WORKER_ID" --token-file "$here/worker.token"

@@ -15,6 +15,13 @@ which hosts both studios in one app. See [standalone and hosted](docs/hosting.md
 
 **Status: planning and design exploration. There is no application backend yet.**
 
+## Install
+
+To run the studio on one host with Docker Compose, plus an optional Mac
+worker, follow [docs/install.md](docs/install.md). The container image runs as
+an unprivileged user, mounts the repository read-only, keeps its state on its
+own volume, and is pinned by digest in the Compose example.
+
 ## Start here
 
 - [Build plan](docs/build-plan.md)

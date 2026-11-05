@@ -1,0 +1,3 @@
+# Copy to worker.conf. The token from `mwsctl worker token` goes in worker.token.
+STUDIO_URL="https://studio.example.org"
+WORKER_ID="mac-1"

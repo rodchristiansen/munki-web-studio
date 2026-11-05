@@ -1,0 +1,28 @@
+# Munki Web Studio on one host. See docs/install.md.
+#
+# The image is pinned by digest. Replace STUDIO_IMAGE in .env with the digest
+# from the release you install (each release lists it); never use :latest.
+services:
+  studio:
+    image: ${STUDIO_IMAGE:?set STUDIO_IMAGE to ghcr.io/rodchristiansen/munki-web-studio@sha256:<digest>}
+    restart: unless-stopped
+    ports:
+      # Bound to loopback: put a TLS reverse proxy in front for other machines.
+      - "127.0.0.1:3186:3186"
+    volumes:
+      - ./studio.toml:/etc/studio/studio.toml:ro
+      # The Munki repository, read-only. Use :rw only for an authoring copy the
+      # config marks writable = true.
+      - ${MUNKI_REPO:?set MUNKI_REPO to the repository folder}:/srv/munki:ro
+      - studio-state:/var/lib/studio
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 1g
+    pids_limit: 256
+
+volumes:
+  # Drafts, jobs, sessions, the audit log, uploads and the search index.
+  studio-state:
