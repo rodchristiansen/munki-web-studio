@@ -68,7 +68,7 @@ describe("activity", () => {
   it("starts a job with a fresh idempotency key and selects it", async () => {
     render(<App />);
     const list = await screen.findByRole("complementary", { name: "Jobs" });
-    expect(within(list).getByRole("button", { name: "Generate catalogs" })).toBeDisabled();
+    expect(await within(list).findByRole("button", { name: "Generate catalogs" })).toBeDisabled();
     await userEvent.click(within(list).getByRole("button", { name: "Validate the repository" }));
     await waitFor(() => expect(window.location.search).toContain("job=j2"));
     const body = posts.find((p) => p.path.endsWith("/jobs"))?.body as { operation: string; idempotency_key: string };
