@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, setCsrfToken, type ObjectDetail, type ObjectSummary, type Package, type RepositoryInfo, type SessionInfo } from "./api/client";
+import { Activity } from "./components/Activity";
 import { Brand } from "./components/Brand";
 import { Icon } from "./components/Icon";
 import { ManifestsWorkspace } from "./components/ManifestsWorkspace";
@@ -185,7 +186,7 @@ export function App() {
           </div>
         </div>
         <div className="workspace-title">
-          <strong>{state.area === "packages" ? "Packages" : "Manifests"}</strong>
+          <strong>{state.area === "packages" ? "Packages" : state.area === "manifests" ? "Manifests" : "Activity"}</strong>
           <small>{state.area === "packages" && packages.status === "ready" ? `${pkgs.length} packages` : " "}</small>
         </div>
         <div className="top-actions">
@@ -223,6 +224,10 @@ export function App() {
           <button type="button" aria-current={state.area === "manifests" ? "page" : undefined} onClick={() => update({ area: "manifests", q: "" })}>
             <Icon name="manifest" />
             Manifests
+          </button>
+          <button type="button" aria-current={state.area === "activity" ? "page" : undefined} onClick={() => update({ area: "activity", q: "" })}>
+            <Icon name="activity" />
+            Activity
           </button>
           <div className="rail-footer">
             <span className="connection-dot" /> {repo ? repo.name : "No repository"}
@@ -264,6 +269,13 @@ export function App() {
             <Message title="Cannot reach the studio" text={repos.message} />
           ) : repos.status === "ready" && !repo ? (
             <Message title="No repository is configured" text="Add a repository to the config file and restart the studio." />
+          ) : state.area === "activity" && repoId ? (
+            <Activity
+              repoId={repoId}
+              canRun={Boolean(session && EDIT_ROLES.has(session.role))}
+              selected={state.job}
+              onSelect={(job) => update({ job })}
+            />
           ) : state.area === "manifests" && repoId ? (
             <ManifestsWorkspace
               repoId={repoId}

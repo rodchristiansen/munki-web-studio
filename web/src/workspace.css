@@ -208,3 +208,7 @@ body { min-height: 100vh; }
 .review-actions { display: flex; gap: 8px; margin-top: 8px; }
 .live-confirm { display: flex; gap: 8px; align-items: center; font-size: 12px; margin-top: 14px; }
 .review-list { max-height: 55vh; overflow: auto; }
+.job-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.job-row span { display: flex; flex-direction: column; text-align: left; }
+.job-row small { color: var(--muted); font-size: 11px; }
+progress { width: 100%; accent-color: var(--accent); }

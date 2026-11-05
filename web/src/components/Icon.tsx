@@ -1,4 +1,4 @@
-export type IconName = "package" | "manifest" | "branch" | "search" | "review" | "grid" | "folder";
+export type IconName = "package" | "manifest" | "branch" | "search" | "review" | "grid" | "folder" | "activity";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   package: <path d="m12 3 9 5-9 5-9-5 9-5Zm-9 5v10l9 5 9-5V8M12 13v10M7.5 5.5l9 5" />,
@@ -22,6 +22,7 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <path d="m15 15 5 5" />
     </>
   ),
+  activity: <path d="M3 12h4l3-8 4 16 3-8h4" />,
   review: <path d="M12 3v12m-4-4 4 4 4-4M4 13v7h16v-7" />,
   grid: (
     <>

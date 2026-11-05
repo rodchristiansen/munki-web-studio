@@ -20,6 +20,9 @@ export type ManifestSection = components["schemas"]["ManifestSection"];
 export type SessionInfo = components["schemas"]["SessionInfo"];
 export type ChangeSetInfo = components["schemas"]["ChangeSetInfo"];
 export type FileDraftInfo = components["schemas"]["FileDraftInfo"];
+export type JobInfo = components["schemas"]["JobInfo"];
+export type JobEventInfo = components["schemas"]["JobEventInfo"];
+export type OperationInfo = components["schemas"]["OperationInfo"];
 
 // Changes carry the session's CSRF token; the server refuses them without it.
 let csrfToken = "";
