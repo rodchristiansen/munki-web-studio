@@ -11,7 +11,12 @@ from munki_web_studio.codec import ParseError, load, revision_of
 from munki_web_studio.codec.model import MAX_FILE_BYTES
 from munki_web_studio.repository.config import Repository
 from munki_web_studio.repository.index import Index
-from munki_web_studio.repository.paths import PathEscapeError, contained, read_contained
+from munki_web_studio.repository.paths import (
+    PathEscapeError,
+    contained,
+    is_link,
+    read_contained,
+)
 
 
 @dataclass
@@ -26,14 +31,26 @@ class ScanResult:
 
 
 def _candidates(root: Path) -> list[tuple[str, str]]:
-    """(relative path, kind) for every metadata file, in a stable order."""
+    """(relative path, kind) for every metadata file, in a stable order.
+
+    Linked folders, at the top level or inside the walk, are skipped. Linked
+    files are listed, then refused by `read_contained` if they lead outside
+    the root.
+
+    On Windows a directory junction counts as a link, as does any other
+    name-surrogate reparse point; `os.walk` would otherwise follow it.
+    Creating symlinks there needs Developer Mode or an administrator;
+    junctions need neither.
+    """
     found: list[tuple[str, str]] = []
     for folder, kind in platform.KINDS.items():
         base = root / folder
-        if not base.is_dir() or base.is_symlink():
+        if not base.is_dir() or is_link(base):
             continue
         for dirpath, dirnames, filenames in os.walk(base, followlinks=False):
-            dirnames[:] = sorted(d for d in dirnames if not d.startswith("."))
+            dirnames[:] = sorted(
+                d for d in dirnames if not d.startswith(".") and not is_link(Path(dirpath) / d)
+            )
             for name in sorted(filenames):
                 if name.startswith(".") or name in platform.IGNORED_NAMES:
                     continue

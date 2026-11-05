@@ -1,0 +1,2 @@
+# Fixtures are hashed byte for byte, so checkout must never convert line endings.
+tests/fixtures/** -text

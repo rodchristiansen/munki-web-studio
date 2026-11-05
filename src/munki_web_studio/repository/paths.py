@@ -2,6 +2,7 @@
 
 import os
 import stat
+import sys
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
@@ -9,6 +10,21 @@ try:
     import fcntl
 except ImportError:  # Windows
     fcntl = None
+
+# A reparse tag with this bit set names another path: symlinks and junctions.
+# Cloud-file and dedup reparse points do not set it and are ordinary files.
+_NAME_SURROGATE = 0x20000000
+
+
+def is_link(path: Path) -> bool:
+    """True for a symlink, or on Windows a junction or other name-surrogate reparse point."""
+    try:
+        info = os.lstat(path)
+    except OSError:
+        return False
+    if stat.S_ISLNK(info.st_mode):
+        return True
+    return bool(getattr(info, "st_reparse_tag", 0) & _NAME_SURROGATE)
 
 
 class PathEscapeError(ValueError):
@@ -53,7 +69,39 @@ def _descriptor_path(fd: int) -> Path | None:
     proc = Path(f"/proc/self/fd/{fd}")
     if proc.exists():  # Linux
         return Path(os.readlink(proc))
+    if sys.platform == "win32":
+        return _handle_path(fd)
     return None
+
+
+if sys.platform == "win32":
+
+    def _handle_path(fd: int) -> Path:
+        """The final path of an open file on Windows, after every link and junction."""
+        import ctypes
+        import msvcrt
+        from ctypes import wintypes
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        final_path = kernel32.GetFinalPathNameByHandleW
+        final_path.argtypes = (wintypes.HANDLE, wintypes.LPWSTR, wintypes.DWORD, wintypes.DWORD)
+        final_path.restype = wintypes.DWORD
+        handle = msvcrt.get_osfhandle(fd)
+        size = 1024
+        while True:
+            buffer = ctypes.create_unicode_buffer(size)
+            length = final_path(handle, buffer, size, 0)
+            if length == 0:
+                raise OSError(ctypes.get_last_error(), "GetFinalPathNameByHandleW failed")
+            if length < size:
+                break
+            size = length + 1
+        path = buffer.value
+        if path.startswith("\\\\?\\UNC\\"):
+            path = "\\\\" + path[len("\\\\?\\UNC\\") :]
+        elif path.startswith("\\\\?\\"):
+            path = path[len("\\\\?\\") :]
+        return Path(path)
 
 
 def read_contained(root: Path, relative: str, limit: int) -> FileRead:
@@ -63,6 +111,10 @@ def read_contained(root: Path, relative: str, limit: int) -> FileRead:
     descriptor's real path is checked again, so replacing a file or directory
     with a link between the check and the read cannot redirect it. At most
     `limit` + 1 bytes are read.
+
+    Windows has no O_NOFOLLOW, so the open follows links and junctions; the
+    handle's final path (GetFinalPathNameByHandleW) is then checked against
+    the root, which refuses a link swapped in after the first check.
     """
     real_root = root.resolve(strict=True)
     target = contained(real_root, relative)
