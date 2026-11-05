@@ -208,3 +208,11 @@ def test_rejects_binary_plist_amplification() -> None:
 def test_rejects_oversized_files() -> None:
     with pytest.raises(ParseError, match="larger than"):
         load(b"#" * (17 * 1024 * 1024))
+
+
+def test_flow_list_items_edit_in_place() -> None:
+    doc = load(b"catalogs: [testing, production]  # both\nname: x\n")
+    result = edit(doc, [Set(("catalogs", 1), "prod, eu")])
+    assert result.surgical
+    assert result.raw == b'catalogs: [testing, "prod, eu"]  # both\nname: x\n'
+    assert load(result.raw).data["catalogs"] == ["testing", "prod, eu"]

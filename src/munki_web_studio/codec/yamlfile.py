@@ -77,13 +77,34 @@ def load_tree(raw: bytes) -> Any:
         raise ParseError(f"Invalid YAML: {error}") from error
 
 
-def plain(value: Any) -> Any:
-    """Convert ruamel's round-trip types into plain Python values."""
+def plain(
+    value: Any, lines: list[str] | None = None, text_keys: frozenset[str] = frozenset()
+) -> Any:
+    """Convert ruamel's round-trip types into plain Python values.
+
+    Keys in `text_keys` are text fields whose consumer reads the scalar as
+    written: an unquoted `version: 2.10` stays "2.10" and a zero hash stays a
+    string, instead of becoming 2.1 or 0. The text comes from the source line.
+    """
+    if isinstance(value, CommentedMap) and lines is not None and text_keys:
+        result: dict[str, Any] = {}
+        for key, item in value.items():
+            if (
+                str(key) in text_keys
+                and isinstance(item, int | float)
+                and not isinstance(item, bool)
+            ):
+                line_no, col = cast(tuple[int, int], value.lc.value(key))
+                line = lines[line_no]
+                result[str(key)] = line[col : _scalar_end(line, col)]
+            else:
+                result[str(key)] = plain(item, lines, text_keys)
+        return result
     if isinstance(value, dict):
         mapping = cast(dict[Any, Any], value)
-        return {str(k): plain(v) for k, v in mapping.items()}
+        return {str(k): plain(v, lines, text_keys) for k, v in mapping.items()}
     if isinstance(value, list):
-        return [plain(v) for v in cast(list[Any], value)]
+        return [plain(v, lines, text_keys) for v in cast(list[Any], value)]
     if isinstance(value, bool) or value is None:
         return value
     if isinstance(value, int):
@@ -93,14 +114,25 @@ def plain(value: Any) -> Any:
     if isinstance(value, str):
         return str(value)
     if isinstance(value, dt.datetime):
-        return dt.datetime(*value.timetuple()[:6], value.microsecond, value.tzinfo)
+        return dt.datetime(
+            value.year,
+            value.month,
+            value.day,
+            value.hour,
+            value.minute,
+            value.second,
+            value.microsecond,
+            value.tzinfo,
+        )
     if isinstance(value, dt.date):
         return dt.date(value.year, value.month, value.day)
     return value
 
 
-def load(raw: bytes) -> Any:
-    return plain(load_tree(raw))
+def load(raw: bytes, text_keys: frozenset[str] = frozenset()) -> Any:
+    tree = load_tree(raw)
+    lines = _lines(raw.decode("utf-8")) if text_keys else None
+    return plain(tree, lines, text_keys)
 
 
 def _render_scalar(value: Any, original: str) -> str:
@@ -123,8 +155,12 @@ def _render_scalar(value: Any, original: str) -> str:
     return json.dumps(value, ensure_ascii=False)
 
 
-def _scalar_end(line: str, col: int) -> int:
-    """End column of the single-line scalar token that starts at col."""
+def _scalar_end(line: str, col: int, *, flow: bool = False) -> int:
+    """End column of the single-line scalar token that starts at col.
+
+    In a flow collection (`[a, b]`, `{k: v}`) a plain scalar also ends at a
+    comma or closing bracket.
+    """
     first = line[col : col + 1]
     if first == "'":
         i = col + 1
@@ -145,6 +181,10 @@ def _scalar_end(line: str, col: int) -> int:
     comment = line.find(" #", col)
     if comment != -1:
         end = comment
+    if flow:
+        stops = [i for i in (line.find(c, col, end) for c in ",]}") if i != -1]
+        if stops:
+            end = min(stops)
     return len(line[:end].rstrip())
 
 
@@ -189,8 +229,12 @@ def _apply(text: str, tree: Any, change: Change) -> str:
                 raise CodecError("Container values need a rewrite")
             lines = _lines(text)
             line = lines[line_no]
-            end = _scalar_end(line, col)
-            lines[line_no] = line[:col] + _render_scalar(value, line[col:end]) + line[end:]
+            flow = bool(parent.fa.flow_style())
+            end = _scalar_end(line, col, flow=flow)
+            rendered = _render_scalar(value, line[col:end])
+            if flow and any(c in rendered for c in ",[]{}") and not rendered.startswith(('"', "'")):
+                rendered = json.dumps(value, ensure_ascii=False)
+            lines[line_no] = line[:col] + rendered + line[end:]
             return "".join(lines)
         case Append(value=value):
             seq = tree
