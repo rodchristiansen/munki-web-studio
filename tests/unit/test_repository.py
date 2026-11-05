@@ -162,3 +162,13 @@ def test_allowed_hosts_always_include_local_names(tmp_path: Path, repo: Reposito
     config.write_text('allowed_hosts = ["*"]\n')
     with pytest.raises(ConfigError, match="cannot be"):
         load_settings(config)
+
+
+def test_index_serves_many_threads_at_once(repo: Repository, index: Index) -> None:
+    from concurrent.futures import ThreadPoolExecutor
+
+    scan(repo, index)
+    expected = len(index.all(repo.id))
+    with ThreadPoolExecutor(max_workers=16) as pool:
+        counts = list(pool.map(lambda _: len(index.all(repo.id)), range(200)))
+    assert counts == [expected] * 200

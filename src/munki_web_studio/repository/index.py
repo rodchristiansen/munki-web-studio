@@ -6,6 +6,7 @@ scan rebuilds it.
 
 import json
 import sqlite3
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -68,19 +69,43 @@ class IndexedObject:
 
 
 class Index:
+    """One SQLite file, with a connection per thread.
+
+    The API serves requests from a thread pool, and a single SQLite connection
+    must not be used by two threads at once, so each thread opens its own. WAL
+    mode lets them read while a scan writes.
+    """
+
     def __init__(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         self.path = path
-        self._db = sqlite3.connect(path, check_same_thread=False)
-        self._db.row_factory = sqlite3.Row
-        self._db.execute("PRAGMA journal_mode=WAL")
-        if self._db.execute("PRAGMA user_version").fetchone()[0] != SCHEMA_VERSION:
-            self._db.executescript("DROP TABLE IF EXISTS objects; DROP TABLE IF EXISTS scans;")
-        self._db.executescript(SCHEMA)
-        self._db.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+        self._local = threading.local()
+        self._lock = threading.Lock()
+        self._connections: list[sqlite3.Connection] = []
+        db = self._db
+        db.execute("PRAGMA journal_mode=WAL")
+        if db.execute("PRAGMA user_version").fetchone()[0] != SCHEMA_VERSION:
+            db.executescript("DROP TABLE IF EXISTS objects; DROP TABLE IF EXISTS scans;")
+        db.executescript(SCHEMA)
+        db.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+
+    @property
+    def _db(self) -> sqlite3.Connection:
+        connection: sqlite3.Connection | None = getattr(self._local, "connection", None)
+        if connection is None:
+            connection = sqlite3.connect(self.path, timeout=30, check_same_thread=False)
+            connection.row_factory = sqlite3.Row
+            self._local.connection = connection
+            with self._lock:
+                self._connections.append(connection)
+        return connection
 
     def close(self) -> None:
-        self._db.close()
+        with self._lock:
+            for connection in self._connections:
+                connection.close()
+            self._connections.clear()
+        self._local = threading.local()
 
     def transaction(self) -> sqlite3.Connection:
         """Use as `with index.transaction() as db:`; commits or rolls back on exit."""
