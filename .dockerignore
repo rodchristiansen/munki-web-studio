@@ -1,0 +1,12 @@
+.git
+.github
+.venv
+.state
+.worktrees
+**/__pycache__
+**/node_modules
+web/test-results
+web/playwright-report
+src/munki_web_studio/static
+tests
+docs

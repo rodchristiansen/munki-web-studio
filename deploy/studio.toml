@@ -1,0 +1,8 @@
+# Studio config for the Compose deployment. Paths are inside the container.
+state_dir = "/var/lib/studio"
+
+[[repositories]]
+id = "main"
+name = "Munki repository"
+path = "/srv/munki"
+writable = false

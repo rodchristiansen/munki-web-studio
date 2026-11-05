@@ -47,3 +47,12 @@ jobs:
       - run: pnpm build
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm e2e
+
+  image:
+    # Builds the container and runs the Compose deployment on a clean runner.
+    # Nothing is pushed; publishing happens in the release workflow.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t munki-web-studio:ci .
+      - run: deploy/smoke.sh munki-web-studio:ci
