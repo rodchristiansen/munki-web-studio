@@ -60,7 +60,25 @@ class Upload:
 class UploadStore:
     def __init__(self, folder: Path) -> None:
         self.folder = folder
-        self._lock = threading.Lock()
+        self._guard = threading.Lock()
+        self._locks: dict[str, threading.Lock] = {}
+        # A running SHA-256 per upload, so finishing does not re-read the file.
+        # After a restart it is rebuilt from the bytes already received.
+        self._digests: dict[str, Any] = {}
+
+    def _lock_for(self, upload_id: str) -> threading.Lock:
+        with self._guard:
+            return self._locks.setdefault(upload_id, threading.Lock())
+
+    def _digest(self, upload: Upload) -> Any:
+        digest = self._digests.get(upload.id)
+        if digest is None:
+            digest = hashlib.sha256()
+            with self.path(upload).open("rb") as handle:
+                for block in iter(lambda: handle.read(1 << 20), b""):
+                    digest.update(block)
+            self._digests[upload.id] = digest
+        return digest
 
     def _dir(self, upload_id: str) -> Path:
         if not re.fullmatch(r"[0-9a-f]{24}", upload_id):
@@ -101,8 +119,9 @@ class UploadStore:
         return self._dir(upload.id) / "data"
 
     def append(self, upload_id: str, offset: int, chunk: bytes) -> Upload:
-        """Add bytes at `offset`, which must be exactly how much has arrived."""
-        with self._lock:
+        """Add bytes at `offset`, which must be exactly how much has arrived.
+        Blocking: call it from a worker thread, not the event loop."""
+        with self._lock_for(upload_id):
             upload = self.get(upload_id)
             if upload.complete:
                 raise UploadError(409, "This upload is already complete")
@@ -110,22 +129,27 @@ class UploadStore:
                 raise UploadError(409, f"Expected offset {upload.received}, not {offset}")
             if upload.received + len(chunk) > upload.size:
                 raise UploadError(413, "More bytes than were declared")
+            digest = self._digest(upload)
             with self.path(upload).open("ab") as handle:
                 handle.write(chunk)
                 handle.flush()
                 os.fsync(handle.fileno())
+            digest.update(chunk)
             upload.received += len(chunk)
             if upload.received == upload.size:
-                if file_sha256(self.path(upload)) != upload.sha256:
+                if digest.hexdigest() != upload.sha256:
                     self.path(upload).write_bytes(b"")
+                    self._digests.pop(upload.id, None)
                     upload.received = 0
                     self._save(upload)
                     raise UploadError(422, "The file's SHA-256 does not match; send it again")
                 upload.complete = True
+                self._digests.pop(upload.id, None)
             self._save(upload)
             return upload
 
     def delete(self, upload_id: str) -> None:
+        self._digests.pop(upload_id, None)
         shutil.rmtree(self._dir(upload_id), ignore_errors=True)
 
 

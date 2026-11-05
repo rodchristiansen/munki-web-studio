@@ -333,6 +333,11 @@ def save_change_set(
         detail={
             "title": change_set.title,
             "files": [f.path for f in change_set.files],
+            "new_files": [f.path for f in change_set.new_files],
+            "payloads": [
+                {"path": p.path, "sha256": p.sha256, "size": p.size, "upload": p.upload_id}
+                for p in change_set.payloads
+            ],
             "live": repo.live,
         },
     )

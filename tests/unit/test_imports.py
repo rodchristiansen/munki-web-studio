@@ -343,3 +343,33 @@ def test_real_makepkginfo_on_this_mac(studio: TestClient, tmp_path: Path) -> Non
     assert (
         "com.example.studio-test" in diff and "<string>apps/StudioExample-2.0.pkg</string>" in diff
     )
+
+
+def test_an_upload_resumes_after_a_restart_and_the_save_is_audited(
+    studio: TestClient, tmp_path: Path
+) -> None:
+    from munki_web_studio.uploads import UploadStore
+
+    app = cast(FastAPI, studio.app)
+    digest = hashlib.sha256(PAYLOAD).hexdigest()
+    created = studio.post(
+        "/api/repositories/fixture/uploads",
+        json={"filename": "Example-1.2.3.pkg", "size": len(PAYLOAD), "sha256": digest},
+    ).json()
+    url = f"/api/repositories/fixture/uploads/{created['id']}"
+    half = len(PAYLOAD) // 2
+    studio.patch(url, content=PAYLOAD[:half], headers={"Upload-Offset": "0"})
+    # A new store has no running hash in memory, as after a restart.
+    app.state.uploads = UploadStore(app.state.uploads.folder)
+    done = studio.patch(url, content=PAYLOAD[half:], headers={"Upload-Offset": str(half)})
+    assert done.json()["complete"]
+    changes = app.state.changes
+    from munki_web_studio.changes.model import Payload
+
+    draft = changes.create("fixture", "local", "Local administrator", "Import")
+    changes.put_new_file(draft.id, "pkgsinfo/apps/E-1.plist", {"name": "E", "version": "1"})
+    changes.put_payload(draft.id, Payload("pkgs/apps/E-1.pkg", created["id"], digest, len(PAYLOAD)))
+    studio.post(f"/api/repositories/fixture/changesets/{draft.id}/save", json={}).raise_for_status()
+    [entry] = [e for e in studio.get("/api/audit").json() if e["action"] == "save"]
+    assert entry["detail"]["new_files"] == ["pkgsinfo/apps/E-1.plist"]
+    assert entry["detail"]["payloads"][0]["sha256"] == digest

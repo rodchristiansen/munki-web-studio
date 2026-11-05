@@ -4,6 +4,7 @@ and use it once its hash checks out."""
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 
 from munki_web_studio.api.read import _repo  # pyright: ignore[reportPrivateUsage]
@@ -95,7 +96,9 @@ async def append_upload(
         if len(chunk) > MAX_CHUNK_BYTES:
             raise HTTPException(413, f"Send at most {MAX_CHUNK_BYTES} bytes per chunk")
     try:
-        upload = _store(request).append(upload_id, upload_offset, bytes(chunk))
+        upload = await run_in_threadpool(
+            _store(request).append, upload_id, upload_offset, bytes(chunk)
+        )
     except UploadError as error:
         raise HTTPException(error.status, str(error)) from None
     return _info(upload)
