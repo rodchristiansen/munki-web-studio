@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -51,6 +52,9 @@ def create_app(settings: Settings | None = None, static_dir: Path = STATIC_DIR) 
         index.close()
 
     app = FastAPI(title=STUDIO.name, version=__version__, lifespan=lifespan)
+    # Refuse requests addressed to any other host name, so a web page cannot use
+    # DNS rebinding to read the API through a browser on this machine.
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(settings.allowed_hosts))
 
     @app.get("/api/health")
     def health() -> Health:  # pyright: ignore[reportUnusedFunction]

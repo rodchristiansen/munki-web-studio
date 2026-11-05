@@ -150,3 +150,15 @@ def test_oversized_files_are_indexed_without_being_parsed(
     scan(repo, index)
     huge = index.get(repo.id, "manifests/huge")
     assert huge is not None and huge.status == "invalid" and "larger than" in (huge.error or "")
+
+
+def test_allowed_hosts_always_include_local_names(tmp_path: Path, repo: Repository) -> None:
+    config = tmp_path / "studio.toml"
+    config.write_text(
+        'allowed_hosts = ["studio.example.org"]\n'
+        f'[[repositories]]\nid = "main"\npath = "{repo.root}"\n'
+    )
+    assert load_settings(config).allowed_hosts == ("localhost", "127.0.0.1", "studio.example.org")
+    config.write_text('allowed_hosts = ["*"]\n')
+    with pytest.raises(ConfigError, match="cannot be"):
+        load_settings(config)
