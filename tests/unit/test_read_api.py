@@ -23,7 +23,9 @@ def client(tmp_path: Path) -> Iterator[TestClient]:
         repositories=(Repository(id="fixture", name="Fixture", root=root.resolve()),),
         state_dir=tmp_path / "state",
     )
-    with TestClient(create_app(settings, static_dir=tmp_path / "none")) as test_client:
+    with TestClient(
+        create_app(settings, static_dir=tmp_path / "none"), base_url="http://localhost"
+    ) as test_client:
         yield test_client
 
 
