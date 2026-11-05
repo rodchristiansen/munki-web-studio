@@ -1,6 +1,7 @@
 """The FastAPI application."""
 
 import asyncio
+import html
 import logging
 import os
 from collections.abc import AsyncGenerator
@@ -8,10 +9,11 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 import httpx
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
+from fastmcp.server.auth import TokenVerifier
 from pydantic import BaseModel
 
 from munki_web_studio.api import audit as audit_routes
@@ -76,12 +78,25 @@ def create_app(
     settings: Settings | None = None,
     static_dir: Path = STATIC_DIR,
     oidc_http: httpx.Client | None = None,
+    *,
+    identity: auth_routes.IdentityHook | None = None,
+    mcp_auth: TokenVerifier | None = None,
 ) -> FastAPI:
+    """The studio as one app. With `identity`, a host signs people in and checks
+    host names, and mounts this app under its own prefix; see hosting.py."""
     settings = settings if settings is not None else settings_from_environment()
-    services = Services(settings)
+    hosted = identity is not None
+    services = Services(settings, hosted=hosted)
     holder: dict[str, SessionStore] = {}
-    verifier = StudioTokenVerifier(lambda: holder.get("store")) if settings.auth.enabled else None
-    mcp_app = create_mcp(services, auth=verifier).http_app(path="/")
+    verifier: TokenVerifier | None
+    if hosted:
+        verifier = mcp_auth
+    else:
+        verifier = (
+            StudioTokenVerifier(lambda: holder.get("store")) if settings.auth.enabled else None
+        )
+    mcp_server = create_mcp(services, auth=verifier)
+    mcp_app = mcp_server.http_app(path="/")
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
@@ -98,7 +113,7 @@ def create_app(
         services.audit = audit
         app.state.journal_dir = settings.state_dir / "journal"
         app.state.uploads = UploadStore(settings.state_dir / "uploads")
-        app.state.auth = auth_routes.AuthState.create(settings.auth, store, oidc_http)
+        app.state.auth = auth_routes.AuthState.create(settings.auth, store, oidc_http, identity)
         app.state.settings = settings
         app.state.index = index
         services.index = index
@@ -136,9 +151,13 @@ def create_app(
             drafts.close()
 
     app = FastAPI(title=STUDIO.name, version=__version__, lifespan=lifespan)
-    # Refuse requests addressed to any other host name, so a web page cannot use
-    # DNS rebinding to read the API through a browser on this machine.
-    app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(settings.allowed_hosts))
+    app.state.mcp = mcp_server
+    app.state.hosted = hosted
+    if not hosted:
+        # Refuse requests addressed to any other host name, so a web page cannot use
+        # DNS rebinding to read the API through a browser on this machine. A host
+        # does this for everything it mounts.
+        app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(settings.allowed_hosts))
 
     @app.get("/api/health")
     def health() -> Health:  # pyright: ignore[reportUnusedFunction]
@@ -163,6 +182,14 @@ def create_app(
     app.mount("/mcp", mcp_app)
 
     if (static_dir / "index.html").is_file():
+        page = (static_dir / "index.html").read_text(encoding="utf-8")
+
+        @app.get("/", response_class=HTMLResponse, include_in_schema=False)
+        def workspace(request: Request) -> str:  # pyright: ignore[reportUnusedFunction]
+            # Under a host's prefix, assets and API calls resolve against it.
+            prefix = html.escape(str(request.scope.get("root_path", "")).rstrip("/"), quote=True)
+            return page.replace('<base href="/" />', f'<base href="{prefix}/" />', 1)
+
         app.mount("/", StaticFiles(directory=static_dir, html=True), name="workspace")
     else:
 

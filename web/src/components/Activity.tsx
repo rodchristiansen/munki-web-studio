@@ -5,6 +5,7 @@ import {
   type JobInfo,
   type OperationInfo,
 } from "../api/client";
+import { studioUrl } from "../base";
 import { Icon } from "./Icon";
 
 const LIST_POLL_MS = 3_000;
@@ -212,7 +213,7 @@ function JobDetail({
     void poll().then((data) => {
       if (stopped || !data || finished(data)) return;
       if (typeof EventSource === "undefined") return fallback();
-      const url = `/api/repositories/${encodeURIComponent(repoId)}/jobs/${encodeURIComponent(jobId)}/events?after=${lastId.current}`;
+      const url = studioUrl(`/api/repositories/${encodeURIComponent(repoId)}/jobs/${encodeURIComponent(jobId)}/events?after=${lastId.current}`);
       source = new EventSource(url);
       source.addEventListener("end", () => {
         source?.close();

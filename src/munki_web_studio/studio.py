@@ -16,6 +16,11 @@ class Studio:
     package: str
     command: str
     config_env: str
+    # What a host shows for this studio: its path and tool prefix, brand colour
+    # and icon (a file in the built workspace).
+    prefix: str = ""
+    accent: str = ""
+    icon: str = ""
 
 
 STUDIO = Studio(
@@ -25,6 +30,9 @@ STUDIO = Studio(
     package="munki_web_studio",
     command="mwsctl",
     config_env="MUNKI_WEB_STUDIO_CONFIG",
+    prefix="munki",
+    accent="#92683f",
+    icon="icon.png",
 )
 
 # Packages from other projects this studio must never import.

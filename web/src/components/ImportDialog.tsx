@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api/client";
+import { studioUrl } from "../base";
 import { IMPORT_ACCEPT } from "../platform";
 
 const CHUNK_BYTES = 8 * 1024 * 1024;
@@ -87,7 +88,7 @@ export function ImportDialog({ repoId, available, needs, onClose, onDrafted }: P
       const chunk = chosen.slice(received, received + CHUNK_BYTES);
       setStage({ kind: "working", message: `Uploading ${chosen.name}`, progress: received / chosen.size });
       try {
-        const url = `${window.location.origin}/api/repositories/${encodeURIComponent(repoId)}/uploads/${uploadId}`;
+        const url = studioUrl(`/api/repositories/${encodeURIComponent(repoId)}/uploads/${uploadId}`);
         const reply = await fetch(
           new Request(url, {
             method: "PATCH",

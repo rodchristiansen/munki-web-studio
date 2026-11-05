@@ -12,6 +12,7 @@ import { ImportDialog, setImportCsrf } from "./components/ImportDialog";
 import { ReviewDialog } from "./components/ReviewDialog";
 import { Settings } from "./components/Settings";
 import { useDraft } from "./draft";
+import { studioUrl } from "./base";
 import { readState, toSearch, type WorkspaceState } from "./url";
 
 const POLL_MS = 15_000;
@@ -62,7 +63,7 @@ export function App() {
       .then(({ data, response }) => {
         if (response.status === 401) {
           const next = window.location.pathname + window.location.search;
-          window.location.assign(`/auth/login?next=${encodeURIComponent(next)}`);
+          window.location.assign(studioUrl(`/auth/login?next=${encodeURIComponent(next)}`));
           return;
         }
         if (data) {
@@ -76,7 +77,7 @@ export function App() {
 
   async function signOut() {
     await api.POST("/auth/logout" as never);
-    window.location.assign("/");
+    window.location.assign(studioUrl("/"));
   }
 
   // Poll for scans, so edits made by other tools show up while the page is open.

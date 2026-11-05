@@ -2,6 +2,8 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
+  // Relative asset URLs, resolved against <base>, so the studio works under a prefix.
+  base: "./",
   plugins: [react()],
   build: {
     outDir: "../src/munki_web_studio/static",
