@@ -38,25 +38,59 @@ def key(item: dict[str, Any]) -> tuple[str, str]:
     return str(item.get("name", "")), str(item.get("version", ""))
 
 
-def check_output(folder: Path, pkginfo_count: int) -> dict[str, int]:
-    """Read every generated catalog and refuse a set that is not plausible: no
-    `all` catalog, an unreadable file, an item with no name, or more items in
-    `all` than there are pkginfo files. Returns each catalog's item count."""
+# What makecatalogs changes between a pkginfo and its catalog entry. Anything
+# else in an entry must match the pkginfo exactly.
+DROPPED_KEYS = frozenset({"notes", "_metadata"})
+ADDED_KEYS: dict[str, type] = {"loop_fingerprint": str}
+
+
+def _comparable(item: dict[str, Any], drop: frozenset[str]) -> dict[str, Any]:
+    return {k: v for k, v in item.items() if k not in drop}
+
+
+def check_output(folder: Path, sources: list[dict[str, Any]]) -> dict[str, int]:
+    """Refuse generated catalogs that are not exactly what the pkginfo say.
+
+    The worker is trusted to run makecatalogs, not to decide what clients
+    install, so every entry is compared with the studio's own reading of the
+    pkginfo: each must match a pkginfo field for field (allowing only the keys
+    makecatalogs drops or adds), each catalog must hold exactly the pkginfo
+    that list it, and no catalog may appear that no pkginfo names. Returns each
+    catalog's item count."""
+    expected: dict[str, list[dict[str, Any]]] = {ALL: []}
+    for source in sources:
+        comparable = _comparable(source, DROPPED_KEYS)
+        expected[ALL].append(comparable)
+        listed = source.get("catalogs", [])
+        for name in cast(list[Any], listed) if isinstance(listed, list) else []:
+            expected.setdefault(str(name), []).append(comparable)
     counts: dict[str, int] = {}
     for path in sorted(folder.iterdir()) if folder.is_dir() else []:
         if path.is_symlink() or not path.is_file():
             raise CatalogError(f"{path.name} is not a plain file")
+        name = name_of(path.name)
+        if name not in expected:
+            raise CatalogError(f"{path.name} is not a catalog any pkginfo names")
         try:
             items = entries(path.read_bytes())
         except (ParseError, CatalogError) as error:
             raise CatalogError(f"{path.name} cannot be read: {error}") from None
-        if any(not key(i)[0] for i in items):
-            raise CatalogError(f"{path.name} has an item with no name")
-        counts[name_of(path.name)] = len(items)
-    if ALL not in counts:
-        raise CatalogError(f"No {ALL!r} catalog was generated")
-    if counts[ALL] > pkginfo_count:
-        raise CatalogError(
-            f"The {ALL!r} catalog lists {counts[ALL]} items but there are {pkginfo_count} pkginfo"
-        )
+        remaining = list(expected[name])
+        for item in items:
+            for added, kind in ADDED_KEYS.items():
+                if added in item and not isinstance(item[added], kind):
+                    raise CatalogError(f"{path.name}: {added} has the wrong type")
+            body = _comparable(item, frozenset(ADDED_KEYS))
+            match = next((i for i, want in enumerate(remaining) if want == body), None)
+            if match is None:
+                label = " ".join(key(item)).strip() or "an item"
+                raise CatalogError(f"{path.name}: {label} does not match any pkginfo")
+            remaining.pop(match)
+        if remaining:
+            missing = ", ".join(sorted({" ".join(key(i)) for i in remaining}))
+            raise CatalogError(f"{path.name} is missing {missing}")
+        counts[name] = len(items)
+    absent = sorted(set(expected) - set(counts))
+    if absent:
+        raise CatalogError(f"No catalog was generated for {', '.join(absent)}")
     return counts

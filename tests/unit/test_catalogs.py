@@ -13,9 +13,11 @@ import pytest
 from fastapi.testclient import TestClient
 from tests.fixtures.build_repo_fixture import REPO
 from tests.unit.test_worker import (
+    FAILING_TOOL,
     FAKE_TOOL,
     REAL_MAKECATALOGS,
     TOKEN,
+    fake,
     only,
     posix_only,
     submit,
@@ -75,9 +77,10 @@ def test_generated_catalogs_replace_the_old_ones(
     job_id = submit(studio).json()["id"]
     assert worker.run_once()
     job = wait_for(studio, job_id, "succeeded")
-    assert job["result"]["applied"] == {"folder": "catalogs", "counts": {"all": 1, "testing": 1}}
-    assert sorted(tree(root / "catalogs")) == [".gitkeep", "all", "testing"]
-    assert b"<string>Fakeall</string>" in (root / "catalogs" / "all").read_bytes()
+    counts = job["result"]["applied"]["counts"]
+    assert set(counts) == {"all", "production", "testing"} and counts["all"] == 8
+    assert sorted(tree(root / "catalogs")) == [".gitkeep", "all", "production", "testing"]
+    assert b"<string>fake</string>" in (root / "catalogs" / "all").read_bytes()
     assert not list(root.glob(".catalogs.studio-*"))
     names = [c["name"] for c in studio.get("/api/repositories/fixture/catalogs").json()]
     assert "stale" not in names
@@ -88,7 +91,7 @@ def test_a_failed_tool_keeps_the_last_catalogs(
     studio: TestClient, tmp_path: Path, root: Path
 ) -> None:
     before = tree(root / "catalogs")
-    failing = tool(tmp_path, FAKE_TOOL.replace('[ -n "$FAKE_FAIL" ]', "true"))
+    failing = tool(tmp_path, FAILING_TOOL)
     worker = worker_for(
         studio, Tools.probe({"makecatalogs": failing, "makepkginfo": failing.parent / "x"})
     )
@@ -104,10 +107,7 @@ def test_output_that_fails_the_check_keeps_the_last_catalogs(
     studio: TestClient, tmp_path: Path, root: Path
 ) -> None:
     before = tree(root / "catalogs")
-    garbage = FAKE_TOOL.replace(
-        "for name in all testing; do",
-        'echo "not a plist" > "$staging/catalogs/all"\nfor name in testing; do',
-    )
+    garbage = fake(extra='catalogs["all"] = "not a list"')
     worker = worker_for(studio, only(tmp_path, garbage))
     worker.hello()
     job_id = submit(studio).json()["id"]
@@ -188,3 +188,52 @@ def test_output_matches_running_makecatalogs_directly(
     wait_for(studio, job_id, "succeeded")
     assert tree(root / "catalogs") == tree(direct / "catalogs")
     assert all(c["up_to_date"] for c in studio.get("/api/repositories/fixture/catalogs").json())
+
+
+@posix_only
+@pytest.mark.parametrize(
+    "tamper,extra,reason",
+    [
+        ('item["installer_item_location"] = "evil.pkg"', "", "does not match any pkginfo"),
+        ('item["postinstall_script"] = "#!/bin/sh"', "", "does not match any pkginfo"),
+        ('item["loop_fingerprint"] = 7', "", "wrong type"),
+        ("", 'catalogs["all"].append({"name": "Injected", "version": "1"})', "Injected 1 does not"),
+        ("", 'catalogs["all"].pop()', "is missing"),
+        ("", 'catalogs["everyone"] = []', "not a catalog any pkginfo names"),
+        ("", 'del catalogs["production"]', "No catalog was generated for production"),
+        ("", 'catalogs["testing"].append(catalogs["testing"][0])', "does not match any pkginfo"),
+    ],
+)
+def test_a_worker_cannot_change_what_clients_install(
+    studio: TestClient, tmp_path: Path, root: Path, tamper: str, extra: str, reason: str
+) -> None:
+    before = tree(root / "catalogs")
+    worker = worker_for(studio, only(tmp_path, fake(tamper, extra)))
+    worker.hello()
+    job_id = submit(studio).json()["id"]
+    assert worker.run_once()
+    error = wait_for(studio, job_id, "failed")["error"]
+    assert error.startswith("The catalogs were not replaced") and reason in error
+    assert tree(root / "catalogs") == before
+
+
+@posix_only
+def test_cancelling_before_the_swap_keeps_the_last_catalogs(
+    studio: TestClient, tmp_path: Path, root: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from munki_web_studio.api import workers
+
+    before = tree(root / "catalogs")
+    worker = worker_for(studio, only(tmp_path, FAKE_TOOL))
+    worker.hello()
+    job_id = submit(studio).json()["id"]
+    checked = workers._sources  # pyright: ignore[reportPrivateUsage]
+
+    def cancel_during_check(repo: Any, index: Any) -> Any:
+        studio.post(f"/api/repositories/fixture/jobs/{job_id}/cancel").raise_for_status()
+        return checked(repo, index)
+
+    monkeypatch.setattr(workers, "_sources", cancel_during_check)
+    assert worker.run_once()
+    wait_for(studio, job_id, "cancelled")
+    assert tree(root / "catalogs") == before

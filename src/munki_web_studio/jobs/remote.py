@@ -9,6 +9,7 @@ repository, or a tool outside its allowlist.
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -26,9 +27,9 @@ class RemoteSpec:
     timeout_seconds: int = 600
     max_attempts: int = 2
     # When set, the outputs replace this repository folder once `check` accepts
-    # them. `check` gets the output folder and the number of pkginfo files, and
-    # returns a summary or raises ValueError.
+    # them. `check` gets the output folder and the studio's own reading of every
+    # readable pkginfo, and returns a summary or raises ValueError.
     applies_to: str | None = None
-    check: Callable[[Path, int], dict[str, int]] | None = None
+    check: Callable[[Path, list[dict[str, Any]]], dict[str, int]] | None = None
     # Arguments a person may pass when starting the job.
     arguments: frozenset[str] = frozenset()

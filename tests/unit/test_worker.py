@@ -24,35 +24,65 @@ from munki_web_studio.worker import JobError, Tools, Worker, safe_extract
 TOKEN = "worker-token-for-tests"  # noqa: S105
 REAL_MAKECATALOGS = Path("/usr/local/munki/makecatalogs")
 
-FAKE_TOOL = """#!/bin/sh
-if [ "$1" = "--version" ]; then echo "9.9.9-test"; exit 0; fi
-if [ -n "$FAKE_FAIL" ]; then echo "no catalogs for you" >&2; exit 3; fi
-staging="$2"
-mkdir -p "$staging/catalogs"
-count=$(find "$staging/pkgsinfo" -type f | wc -l | tr -d ' ')
-head='<?xml version="1.0" encoding="UTF-8"?><plist version="1.0">'
-for name in all testing; do
-  out="$staging/catalogs/$name"
-  printf '%s<array><dict><key>name</key><string>Fake%s</string>' "$head" "$name" > "$out"
-  printf '<key>version</key><string>%s</string></dict></array></plist>\n' "$count" >> "$out"
-done
-echo "wrote catalogs from $count files"
+# A stand-in for makecatalogs: it reads the staged pkginfo with the studio's
+# codec and writes catalogs the way makecatalogs does.
+FAKE_TOOL = """
+import os, plistlib, sys, pathlib
+from munki_web_studio.codec import load
+if sys.argv[1] == "--version":
+    print("9.9.9-test")
+    sys.exit(0)
+if os.environ.get("FAKE_FAIL"):
+    print("no catalogs for you", file=sys.stderr)
+    sys.exit(3)
+staging = pathlib.Path(sys.argv[2])
+catalogs = {"all": []}
+for path in sorted((staging / "pkgsinfo").rglob("*")):
+    if not path.is_file():
+        continue
+    try:
+        item = load(path.read_bytes()).data
+    except Exception:
+        continue
+    if not isinstance(item, dict):
+        continue
+    item = {k: v for k, v in item.items() if k not in ("notes", "_metadata")}
+    item["loop_fingerprint"] = "fake"
+    TAMPER
+    catalogs["all"].append(item)
+    for name in item.get("catalogs", []):
+        catalogs.setdefault(name, []).append(item)
+EXTRA
+(staging / "catalogs").mkdir()
+for name, items in catalogs.items():
+    (staging / "catalogs" / name).write_bytes(plistlib.dumps(items))
+print("wrote", len(catalogs), "catalogs")
 """
 
-SLOW_TOOL = """#!/bin/sh
-if [ "$1" = "--version" ]; then echo "slow"; exit 0; fi
-sleep 30
+FAILING_TOOL = FAKE_TOOL.replace('os.environ.get("FAKE_FAIL")', "True")
+SLOW_TOOL = """
+import sys, time
+if sys.argv[1] == "--version":
+    print("slow")
+    sys.exit(0)
+time.sleep(30)
 """
 
 
-# The fake tools are shell scripts; on Windows the real-tool tests run instead.
-posix_only = pytest.mark.skipif(sys.platform == "win32", reason="fake tools are shell scripts")
+def fake(tamper: str = "", extra: str = "") -> str:
+    return FAKE_TOOL.replace("TAMPER", tamper or "pass").replace("EXTRA", extra or "pass")
+
+
+# The fake tools are Python scripts run by path; on Windows the real-tool tests run instead.
+posix_only = pytest.mark.skipif(sys.platform == "win32", reason="fake tools need a shebang")
 
 
 def tool(tmp_path: Path, body: str, name: str = "makecatalogs") -> Path:
     path = tmp_path / "bin" / name
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(body)
+    path.write_text(
+        f"#!{sys.executable}\n{body.replace('TAMPER', 'pass').replace('EXTRA', 'pass')}"
+    )
     path.chmod(0o755)
     return path
 
@@ -160,11 +190,15 @@ def test_a_job_runs_on_the_worker_and_returns_hashed_artifacts(
     assert worker.run_once()
     job = wait_for(studio, job_id, "succeeded")
     artifact = job["result"]["artifacts"][0]
-    assert [a["path"] for a in job["result"]["artifacts"]] == ["catalogs/all", "catalogs/testing"]
+    assert [a["path"] for a in job["result"]["artifacts"]] == [
+        "catalogs/all",
+        "catalogs/production",
+        "catalogs/testing",
+    ]
     assert job["result"]["tool_version"] == "9.9.9-test" and job["result"]["worker"] == "mac-1"
     body = studio.get(f"/api/repositories/fixture/jobs/{job_id}/artifacts/catalogs/all")
     assert hashlib.sha256(body.content).hexdigest() == artifact["sha256"]
-    assert b"<string>Fakeall</string>" in body.content
+    assert b"<string>ExampleEditor</string>" in body.content
     assert not worker.run_once()
 
 
@@ -181,7 +215,7 @@ def test_the_tool_does_not_inherit_the_worker_environment(
 
 
 def test_tool_failures_are_reported(studio: TestClient, tmp_path: Path) -> None:
-    failing = tool(tmp_path, FAKE_TOOL.replace('[ -n "$FAKE_FAIL" ]', "true"))
+    failing = tool(tmp_path, FAILING_TOOL)
     worker = worker_for(
         studio, Tools.probe({"makecatalogs": failing, "makepkginfo": failing.parent / "missing"})
     )

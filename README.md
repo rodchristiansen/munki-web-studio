@@ -87,12 +87,15 @@ Catalogs shows what each catalog holds and where it has fallen behind the
 pkginfo: items a pkginfo lists for a catalog that the catalog is missing, and
 items still in a catalog that no pkginfo puts there. Generate catalogs runs
 `makecatalogs --skip-pkg-check` on the worker against the repository's pkginfo
-at the revision it was started on. The studio checks the result (every catalog
-reads, there is an `all` catalog, and no catalog lists more items than there
-are pkginfo), then swaps it into `catalogs/` in one step, removing stale
+at the revision it was started on. The studio does not trust the
+worker with what clients install. It compares every catalog entry with its own
+reading of the pkginfo, field for field, allowing only the keys `makecatalogs`
+drops (`notes`, `_metadata`) or adds (`loop_fingerprint`). Each catalog must
+hold exactly the pkginfo that list it, and no other catalog may appear. Then it
+swaps the catalogs into `catalogs/` in one step, removing stale
 catalogs as `makecatalogs` does and keeping hidden files such as `.gitkeep`. If
-the tool fails, the output fails the check, or the repository changes while the
-job runs, the existing catalogs stay as they were. The result matches running
+the tool fails, the output fails the check, the job is cancelled, or the
+repository changes while the job runs, the existing catalogs stay as they were. The result matches running
 `makecatalogs` directly on the same pkginfo. One difference: the worker does not
 receive `icons/`, so it does not write `icons/_icon_hashes.plist`. Generating
 needs a writable repository, and a live repository asks for confirmation first.
