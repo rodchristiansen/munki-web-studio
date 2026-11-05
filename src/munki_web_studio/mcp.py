@@ -238,6 +238,8 @@ def create_mcp(services: Services | None = None, auth: TokenVerifier | None = No
         }
 
     def editor() -> User:
+        if services.hosted and get_access_token() is None:
+            raise PermissionError("Sign in through the host to draft changes")
         user = caller()
         if user.role < Role.EDITOR:
             raise PermissionError("Drafting needs the Editor role")

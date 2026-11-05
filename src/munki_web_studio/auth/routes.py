@@ -21,6 +21,19 @@ CSRF_HEADER = "x-csrf-token"
 SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 
 
+@dataclass(frozen=True)
+class HostedIdentity:
+    """Who a host says is making a request, and the CSRF token the host gave
+    that person's browser. The studio checks roles and the token as usual."""
+
+    user: User
+    csrf_token: str
+
+
+# Given a request, the host's signed-in person, or None when nobody is.
+IdentityHook = Callable[[Request], HostedIdentity | None]
+
+
 @dataclass
 class AuthState:
     settings: AuthSettings
@@ -28,16 +41,22 @@ class AuthState:
     client: OIDCClient | None
     # With sign-in off, one token per process still guards against cross-site posts.
     local_csrf: str = ""
+    # Set when a host such as FleetMate signs people in instead of the studio.
+    identity: IdentityHook | None = None
 
     @classmethod
     def create(
-        cls, settings: AuthSettings, store: SessionStore, http: httpx.Client | None = None
+        cls,
+        settings: AuthSettings,
+        store: SessionStore,
+        http: httpx.Client | None = None,
+        identity: IdentityHook | None = None,
     ) -> AuthState:
         client = None
-        if settings.enabled:
+        if settings.enabled and identity is None:
             env = settings.client_secret_env
             client = OIDCClient(settings, os.environ.get(env) if env else None, http)
-        return cls(settings, store, client, secrets.token_urlsafe(32))
+        return cls(settings, store, client, secrets.token_urlsafe(32), identity)
 
 
 class SessionInfo(BaseModel):
@@ -61,6 +80,9 @@ def bearer_token(request: Request) -> str | None:
 def current_session(request: Request) -> Session | None:
     """The browser's cookie session, or the session a bearer token names."""
     auth = _auth(request)
+    if auth.identity is not None:
+        hosted = auth.identity(request)
+        return Session(hosted.user, hosted.csrf_token) if hosted else None
     if not auth.settings.enabled:
         return Session(LOCAL_USER, auth.local_csrf)
     token = bearer_token(request) or request.cookies.get(COOKIE)
@@ -78,7 +100,10 @@ def require(role: Role) -> Callable[[Request], Session]:
         if session.user.role < role:
             raise HTTPException(403, f"This needs the {role.label} role")
         # A bearer token is never sent by a browser on its own, so it needs no CSRF token.
-        uses_bearer = bearer_token(request) is not None and _auth(request).settings.enabled
+        auth = _auth(request)
+        uses_bearer = (
+            auth.identity is None and bearer_token(request) is not None and auth.settings.enabled
+        )
         if request.method not in SAFE_METHODS and not uses_bearer:
             sent = request.headers.get(CSRF_HEADER, "")
             if not sent or not secrets.compare_digest(sent, session.csrf):
@@ -88,7 +113,14 @@ def require(role: Role) -> Callable[[Request], Session]:
     return check
 
 
+def not_hosted(request: Request) -> None:
+    """The studio's own sign-in routes do not exist when a host signs people in."""
+    if _auth(request).identity is not None:
+        raise HTTPException(404, "Sign-in is handled by the host")
+
+
 router = APIRouter(tags=["auth"])
+NotHosted = Depends(not_hosted)
 
 
 @router.get("/api/session")
@@ -97,7 +129,8 @@ def get_session(request: Request) -> SessionInfo:
     session = current_session(request)
     if session is None:
         raise HTTPException(401, "Sign in required", headers={"X-Sign-In": "/auth/login"})
-    mode = "oidc" if _auth(request).settings.enabled else "none"
+    auth = _auth(request)
+    mode = "host" if auth.identity else "oidc" if auth.settings.enabled else "none"
     return SessionInfo(
         name=session.user.name,
         email=session.user.email,
@@ -118,7 +151,7 @@ def _safe_next(next_path: str | None) -> str:
     return next_path
 
 
-@router.get("/auth/login", include_in_schema=False)
+@router.get("/auth/login", include_in_schema=False, dependencies=[NotHosted])
 def login(request: Request, next: str | None = None) -> RedirectResponse:
     auth = _auth(request)
     if not auth.settings.enabled or auth.client is None:
@@ -129,7 +162,7 @@ def login(request: Request, next: str | None = None) -> RedirectResponse:
     return RedirectResponse(auth.client.authorize_url(state, nonce, challenge), status_code=303)
 
 
-@router.get("/auth/callback", include_in_schema=False)
+@router.get("/auth/callback", include_in_schema=False, dependencies=[NotHosted])
 def callback(request: Request, code: str = "", state: str = "", error: str = "") -> Response:
     auth = _auth(request)
     if not auth.settings.enabled or auth.client is None:
@@ -194,7 +227,7 @@ def callback(request: Request, code: str = "", state: str = "", error: str = "")
     return response
 
 
-@router.post("/auth/logout", include_in_schema=False)
+@router.post("/auth/logout", include_in_schema=False, dependencies=[NotHosted])
 def logout(request: Request, session: Session = Depends(require(Role.VIEWER))) -> Response:  # noqa: B008
     del session
     token = bearer_token(request) or request.cookies.get(COOKIE)
@@ -230,7 +263,7 @@ class TokenResponse(BaseModel):
     role: str
 
 
-@router.get("/api/auth/config")
+@router.get("/api/auth/config", dependencies=[NotHosted])
 def auth_config(request: Request) -> AuthConfig:
     """What a command line or MCP client needs to sign in to this studio."""
     auth = _auth(request)
@@ -247,7 +280,7 @@ def auth_config(request: Request) -> AuthConfig:
     )
 
 
-@router.post("/auth/token")
+@router.post("/auth/token", dependencies=[NotHosted])
 def issue_token(request: Request, body: TokenRequest) -> TokenResponse:
     """Trade a provider ID token (from device sign-in) for a studio bearer token."""
     auth = _auth(request)

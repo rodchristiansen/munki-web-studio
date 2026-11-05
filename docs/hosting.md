@@ -1,6 +1,6 @@
 # Standalone and hosted
 
-Status: proposal · 2026-11-04. This page is kept identical in Munki Web Studio and
+Status: built 2026-11-05 (contract version 1). This page is kept identical in Munki Web Studio and
 Cimian Web Studio.
 
 ## The rule
@@ -69,3 +69,27 @@ studio's own release.
   process can host both packages.
 - The same contract version, or FleetMate pins the last compatible release.
 - No imports from FleetMate or from the other studio, checked in CI.
+
+## The contract in code
+
+Each studio's package has a `hosting` module (`munki_web_studio.hosting`,
+`cimian_web_studio.hosting`) with the same names:
+
+| Surface       | In the `hosting` module                                                                 |
+| ------------- | --------------------------------------------------------------------------------------- |
+| Manifest      | `manifest()`: name, version, `contract_version`, platform, prefix, MCP prefix, accent, icon, UI folder |
+| API and UI    | `create_hosted_app(settings, identity)`: one app with the API, the MCP endpoint and the browser workspace, for `host.mount(manifest().prefix, app)` |
+| Lifespan      | `studio_lifespan(app)`: run inside the host's lifespan, because mounted apps get none of their own |
+| MCP           | `mcp_server(app)`: the FastMCP server, for `host_mcp.mount(server, namespace=manifest().mcp_prefix)` |
+| Identity hook | `IdentityHook`: given a request, a `HostedIdentity(user, csrf_token)` or None           |
+| Settings      | `validate_settings(raw, base)`: the studio's own parsing, returning settings or a reason |
+| Jobs          | `job_types()`: each job's name, title, required capabilities, role, and where it runs   |
+| Health        | `health(app)`: version, repositories with file counts, workers and whether they are connected |
+
+In hosted mode the studio's own sign-in routes return 404. The host's user and
+CSRF token stand in for its own, and roles are checked the same way. The
+host-name check is left to the host. Hosted MCP tools read the person from the
+host's access token (subject, plus `name` and `role` claims), and drafting
+without one is refused. The browser workspace finds its prefix from `<base>`,
+which the studio fills in from the mount path.
+

@@ -19,6 +19,9 @@ class Services:
     index: Index | None = None
     changes: ChangeSetStore | None = None
     audit: AuditLog | None = None
+    # Hosted: a host signs people in, so a call with no access token is nobody,
+    # never the local administrator.
+    hosted: bool = False
 
     def repository(self, repo_id: str | None = None) -> Repository:
         """The named repository, or the first one when no name is given."""
