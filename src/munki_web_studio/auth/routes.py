@@ -128,16 +128,48 @@ def callback(request: Request, code: str = "", state: str = "", error: str = "")
         raise HTTPException(404)
     if error:
         raise HTTPException(400, f"Sign-in was not completed: {error}")
+    log = request.app.state.audit
     pending = auth.store.finish_login(state) if state else None
     if pending is None or not code:
+        log.record(
+            actor="anonymous",
+            actor_name="Not signed in",
+            interface="web",
+            action="sign-in",
+            outcome="refused",
+            detail={"reason": "unknown or expired state"},
+        )
         raise HTTPException(400, "This sign-in link has expired or was already used; start again")
     try:
         claims = auth.client.exchange(code, pending.verifier, pending.nonce)
     except SignInError as failure:
+        log.record(
+            actor="anonymous",
+            actor_name="Not signed in",
+            interface="web",
+            action="sign-in",
+            outcome="refused",
+            detail={"reason": str(failure)},
+        )
         raise HTTPException(400, str(failure)) from failure
     role = auth.settings.role_for(claims.values)
     if role is None:
+        log.record(
+            actor=claims.subject,
+            actor_name=claims.name,
+            interface="web",
+            action="sign-in",
+            outcome="refused",
+            detail={"reason": "no role"},
+        )
         raise HTTPException(403, "Your account has no role in this studio; ask an administrator")
+    log.record(
+        actor=claims.subject,
+        actor_name=claims.name,
+        interface="web",
+        action="sign-in",
+        detail={"role": role.label},
+    )
     token, _ = auth.store.create(
         User(claims.subject, claims.name, claims.email, role), auth.settings.session_hours
     )

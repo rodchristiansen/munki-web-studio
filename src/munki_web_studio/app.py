@@ -15,7 +15,9 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from starlette.types import Receive, Scope, Send
 
+from munki_web_studio.api import audit as audit_routes
 from munki_web_studio.api import manifests, read
+from munki_web_studio.audit import AuditLog
 from munki_web_studio.auth import routes as auth_routes
 from munki_web_studio.auth.model import Role
 from munki_web_studio.auth.sessions import SessionStore
@@ -77,6 +79,8 @@ def create_app(
     async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         index = Index(settings.state_dir / "index.sqlite")
         store = SessionStore(settings.state_dir / "state.sqlite")
+        audit = AuditLog(settings.state_dir / "audit.sqlite")
+        app.state.audit = audit
         app.state.auth = auth_routes.AuthState.create(settings.auth, store, oidc_http)
         app.state.settings = settings
         app.state.index = index
@@ -94,6 +98,7 @@ def create_app(
                 watcher.cancel()
             index.close()
             store.close()
+            audit.close()
 
     app = FastAPI(title=STUDIO.name, version=__version__, lifespan=lifespan)
     # Refuse requests addressed to any other host name, so a web page cannot use
@@ -105,7 +110,9 @@ def create_app(
         return Health(status="ok", name=STUDIO.name, version=__version__)
 
     viewer = [Depends(auth_routes.require(Role.VIEWER))]
+    app.middleware("http")(audit_routes.record_changes)
     app.include_router(auth_routes.router)
+    app.include_router(audit_routes.router)
     app.include_router(read.router, dependencies=viewer)
     app.include_router(manifests.router, dependencies=viewer)
     if settings.auth.enabled:
