@@ -1,5 +1,5 @@
-"""The worker: a separate process, usually on a Mac, that runs platform tools for
-the studio.
+"""The worker: a separate process, on a machine with the platform's own tools,
+that runs those tools for the studio.
 
 It connects out to the studio, so the studio never needs to reach it. It reports
 its OS and the versions of the tools it found, claims jobs it can run, copies
@@ -7,7 +7,7 @@ each job's inputs into a fresh staging folder, runs one allowlisted tool with a
 fixed argument list, and uploads the output files with their hashes. It never
 runs a shell or anything from the repository.
 
-    mwsctl worker run --url https://studio.example.org --id mac-1 --token-file ~/.mac-1.token
+    mwsctl worker run --url https://studio.example.org --id worker-1 --token-file worker-1.token
 """
 
 import hashlib
@@ -15,6 +15,7 @@ import io
 import logging
 import os
 import platform as host
+import re
 import shutil
 import signal
 import subprocess
@@ -62,7 +63,7 @@ class Tools:
                 continue
             try:
                 done = subprocess.run(  # noqa: S603 - a fixed, allowlisted tool path
-                    [str(path), *platform.TOOL_VERSION_ARGS],
+                    [str(path), *platform.TOOL_VERSION_ARGS.get(name, ("--version",))],
                     capture_output=True,
                     text=True,
                     timeout=15,
@@ -89,6 +90,14 @@ def os_version() -> str:
     return host.release()
 
 
+# Names a job input may use on any OS: no drive letters, colons (alternate data
+# streams), backslashes, or Windows device names.
+_SAFE_PART = re.compile(r"[A-Za-z0-9][A-Za-z0-9 ._+@()-]*")
+_RESERVED = frozenset(
+    {"CON", "PRN", "AUX", "NUL", *(f"COM{n}" for n in range(10)), *(f"LPT{n}" for n in range(10))}
+)
+
+
 def safe_extract(data: bytes, staging: Path, folders: tuple[str, ...]) -> int:
     """Unpack job inputs. Only plain files inside the expected folders are taken;
     links, devices, absolute paths and `..` are refused."""
@@ -104,7 +113,13 @@ def safe_extract(data: bytes, staging: Path, folders: tuple[str, ...]) -> int:
                 or name.parts[0] not in folders
             ):
                 raise JobError(f"Refused an unexpected input: {member.name}")
+            if not all(_SAFE_PART.fullmatch(part) for part in name.parts) or any(
+                part.split(".")[0].upper() in _RESERVED for part in name.parts
+            ):
+                raise JobError(f"Refused an unexpected input: {member.name}")
             target = staging.joinpath(*name.parts)
+            if not target.resolve().is_relative_to(staging.resolve()):
+                raise JobError(f"Refused an unexpected input: {member.name}")
             target.parent.mkdir(parents=True, exist_ok=True)
             source = archive.extractfile(member)
             if source is None:
