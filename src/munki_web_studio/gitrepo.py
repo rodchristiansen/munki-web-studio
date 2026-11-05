@@ -13,6 +13,7 @@ than run half-safely.
 
 import os
 import re
+import secrets
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -105,6 +106,8 @@ class Git:
             "GIT_CONFIG_GLOBAL": os.devnull,
             "GIT_TERMINAL_PROMPT": "0",
             "GIT_OPTIONAL_LOCKS": "0",
+            # Paths are file names, never patterns or magic like ":(glob)".
+            "GIT_LITERAL_PATHSPECS": "1",
             "GIT_ASKPASS": "",
             "SSH_ASKPASS": "",
             "LANG": "C",
@@ -115,7 +118,15 @@ class Git:
                 env[name] = os.environ[name]
         return env
 
-    def run(self, *args: str, timeout: float = TIMEOUT_SECONDS, check: bool = True) -> str:
+    def _exec(
+        self,
+        args: tuple[str, ...],
+        *,
+        stdin: bytes | None = None,
+        env: dict[str, str] | None = None,
+        timeout: float = TIMEOUT_SECONDS,
+        check: bool = True,
+    ) -> bytes:
         self.hooks.mkdir(parents=True, exist_ok=True)
         overrides = [f"core.hooksPath={self.hooks}", *OVERRIDES]
         command = ["git", "-C", str(self.repo.root)]
@@ -125,21 +136,24 @@ class Git:
         try:
             done = subprocess.run(  # noqa: S603 - fixed git binary, argument list, no shell
                 command,
-                env=self._env(),
+                env=self._env() | (env or {}),
                 capture_output=True,
-                text=True,
+                input=stdin if stdin is not None else b"",
                 timeout=timeout,
                 check=False,
-                stdin=subprocess.DEVNULL,
             )
         except FileNotFoundError:
             raise GitError("Git is not installed on the studio's server") from None
         except subprocess.TimeoutExpired:
             raise GitError(f"git {args[0]} took longer than {int(timeout)} seconds") from None
         if check and done.returncode != 0:
-            message = (done.stderr or done.stdout).strip().splitlines()
+            text = (done.stderr or done.stdout).decode("utf-8", "replace")
+            message = text.strip().splitlines()
             raise GitError(_redact(message[-1]) if message else f"git {args[0]} failed")
         return done.stdout
+
+    def run(self, *args: str, timeout: float = TIMEOUT_SECONDS, check: bool = True) -> str:
+        return self._exec(args, timeout=timeout, check=check).decode("utf-8", "replace")
 
     def is_repository(self) -> bool:
         try:
@@ -200,33 +214,94 @@ class Git:
         status.changed = sorted({entry[3:] for entry in porcelain.split("\0") if len(entry) > 3})
         return status
 
-    def commit(self, paths: list[str], message: str, author: str, email: str) -> str:
-        """Commit exactly these paths, whatever else is staged, and return the commit."""
-        if not paths:
+    def commit(self, files: dict[str, bytes], message: str, author: str, email: str) -> str:
+        """Commit exactly these files with exactly these contents, and return the
+        commit. The commit is built with plumbing from the bytes given, not from
+        the working tree, so nothing that changes on disk meanwhile can slip in;
+        other staged or modified files are left as they were. No hooks run."""
+        if not files:
             raise GitError("Nothing to commit")
         reason = self.check()
         if reason:
             raise GitError(f"Git is not available: {reason}")
-        self.run("add", "--", *paths)
-        self.run(
-            "-c",
-            f"user.name={author}",
-            "-c",
-            f"user.email={email}",
-            "commit",
-            "--no-verify",
-            "--quiet",
-            "--only",
-            "-m",
-            message,
-            "--",
-            *paths,
+        head = self.run("rev-parse", "--verify", "--quiet", "HEAD", check=False).strip()
+        paths = sorted(files)
+        old = self._entries(("ls-tree", "-z", head, "--", *paths)) if head else {}
+        entries: list[str] = []
+        for path in paths:
+            blob = self._exec(("hash-object", "-w", "--stdin"), stdin=files[path]).decode().strip()
+            mode = old[path][0] if path in old else "100644"
+            entries.append(f"{mode} {blob}\t{path}")
+        index = self.hooks.parent / f"git-index-{secrets.token_hex(6)}"
+        scratch = {"GIT_INDEX_FILE": str(index)}
+        try:
+            if head:
+                self._exec(("read-tree", head), env=scratch)
+            else:
+                self._exec(("read-tree", "--empty"), env=scratch)
+            listing = "".join(f"{e}\0" for e in entries).encode()
+            self._exec(("update-index", "-z", "--index-info"), stdin=listing, env=scratch)
+            tree = self._exec(("write-tree",), env=scratch).decode().strip()
+        finally:
+            index.unlink(missing_ok=True)
+        if head and tree == self.run("rev-parse", f"{head}^{{tree}}").strip():
+            raise GitError("The saved files already match the last commit")
+        people = {
+            "GIT_AUTHOR_NAME": author,
+            "GIT_AUTHOR_EMAIL": email,
+            "GIT_COMMITTER_NAME": author,
+            "GIT_COMMITTER_EMAIL": email,
+        }
+        parents = ("-p", head) if head else ()
+        commit = (
+            self._exec(("commit-tree", tree, *parents), stdin=message.encode(), env=people)
+            .decode()
+            .strip()
         )
-        return self.run("rev-parse", "HEAD").strip()
+        if self.committed_paths(commit) != paths:
+            raise GitError("The commit did not hold exactly the saved files; nothing was changed")
+        # Moves the branch only if nobody else committed meanwhile.
+        self._exec(("update-ref", "-m", "studio: commit saved files", "HEAD", commit, head))
+        self._sync_index(paths, old, entries)
+        return commit
+
+    def _entries(self, args: tuple[str, ...]) -> dict[str, tuple[str, str]]:
+        """Path to (mode, object) from `ls-tree -z` or `ls-files -s -z` output."""
+        found: dict[str, tuple[str, str]] = {}
+        for record in self.run(*args).split("\0"):
+            if "\t" not in record:
+                continue
+            meta, path = record.split("\t", 1)
+            fields = meta.split()
+            obj = fields[2] if fields[1] == "blob" else fields[1]
+            found[path] = (fields[0], obj)
+        return found
+
+    def _sync_index(
+        self, paths: list[str], old: dict[str, tuple[str, str]], entries: list[str]
+    ) -> None:
+        """Point the real index at the new blobs, but only for paths whose staged
+        version was the old commit's, so someone's own staged edit is kept."""
+        staged = self._entries(("ls-files", "-s", "-z", "--", *paths))
+        keep = [
+            entry
+            for path, entry in zip(paths, entries, strict=True)
+            if staged.get(path, (None, None))[1] == old.get(path, (None, None))[1]
+        ]
+        if keep:
+            listing = "".join(f"{e}\0" for e in keep).encode()
+            self._exec(("update-index", "-z", "--index-info"), stdin=listing)
 
     def committed_paths(self, commit: str) -> list[str]:
         listing = self.run(
-            "diff-tree", "--no-commit-id", "--name-only", "-r", "-z", "--root", commit
+            "diff-tree",
+            "--no-commit-id",
+            "--name-only",
+            "--no-renames",
+            "-r",
+            "-z",
+            "--root",
+            commit,
         )
         return sorted(p for p in listing.split("\0") if p)
 
