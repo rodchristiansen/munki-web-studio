@@ -1,6 +1,7 @@
 """Optional Git: status, committing exactly what a draft saved, never running
 anything the repository names, and leaving non-Git repositories alone."""
 
+import os
 import shutil
 import subprocess
 from collections.abc import Iterator
@@ -18,6 +19,11 @@ EDITOR = "pkgsinfo/apps/creative/ExampleEditor-2.10.plist"
 BROWSER = "pkgsinfo/apps/browsers/ExampleBrowser-136.0.plist"
 
 
+# The tests' own Git calls ignore the machine's global and system config, which
+# can set core.hooksPath or hooks of its own.
+GIT_ENV = {**os.environ, "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1"}
+
+
 def git(root: Path, *args: str) -> str:
     return subprocess.run(
         [
@@ -33,6 +39,7 @@ def git(root: Path, *args: str) -> str:
         check=True,
         capture_output=True,
         text=True,
+        env=GIT_ENV,
     ).stdout
 
 
@@ -124,9 +131,17 @@ def test_hooks_never_run(studio: TestClient, root: Path, tmp_path: Path) -> None
         folder.mkdir(exist_ok=True)
         for hook in ("pre-commit", "commit-msg", "post-commit", "pre-push"):
             script = folder / hook
-            script.write_text(f"#!/bin/sh\ntouch {marker}\n")
+            # Forward slashes: on Windows, Git runs hooks with its own sh.
+            script.write_text(f"#!/bin/sh\ntouch '{marker.as_posix()}'\n")
             script.chmod(0o755)
-    git(root, "config", "core.hooksPath", ".husky")
+    # Each set of hooks does run when Git is used directly, so the studio's
+    # commit below proves they were switched off, not that they cannot run here.
+    for hooks_path in (None, ".husky"):
+        if hooks_path:
+            git(root, "config", "core.hooksPath", hooks_path)
+        git(root, "commit", "--allow-empty", "-m", "Hooks run")
+        assert marker.exists()
+        marker.unlink()
     change_id = save_edit(studio, EDITOR, "Hooked")
     assert commit(studio, change_id).status_code == 200
     assert not marker.exists()
@@ -151,7 +166,7 @@ def test_repository_config_that_runs_programs_turns_git_off(
 ) -> None:
     marker = tmp_path / "ran"
     (root / ".gitattributes").write_text("* filter=evil diff=evil\n")
-    git(root, "config", key, value.format(marker=marker))
+    git(root, "config", key, value.format(marker=marker.as_posix()))
     status = studio.get("/api/repositories/fixture/git").json()
     assert not status["enabled"] and key.lower() in status["reason"]
     assert "could run programs" in status["reason"]
@@ -188,7 +203,7 @@ def test_push_needs_an_upstream_and_refuses_local_remotes(
     refused = studio.post("/api/repositories/fixture/git/push")
     assert refused.status_code == 409 and "no upstream" in refused.json()["detail"]
     remote = tmp_path / "remote.git"
-    subprocess.run(["git", "init", "--bare", "--quiet", str(remote)], check=True)
+    subprocess.run(["git", "init", "--bare", "--quiet", str(remote)], check=True, env=GIT_ENV)
     git(root, "remote", "add", "origin", str(remote))
     git(root, "push", "--quiet", "-u", "origin", "main")
     status = studio.get("/api/repositories/fixture/git").json()
@@ -289,3 +304,14 @@ def test_commits_and_pushes_are_audited(studio: TestClient, root: Path) -> None:
     assert actions["git commit"]["detail"]["commit"] == sha
     assert actions["git commit"]["detail"]["paths"] == [EDITOR]
     assert actions["git push"]["outcome"] == "refused"
+
+
+def test_a_path_that_is_a_link_in_the_last_commit_is_refused(
+    studio: TestClient, root: Path
+) -> None:
+    change_id = save_edit(studio, EDITOR, "Linked")
+    blob = git(root, "rev-parse", f"HEAD:{EDITOR}").strip()
+    git(root, "update-index", "--cacheinfo", f"120000,{blob},{EDITOR}")
+    git(root, "commit", "--quiet", "-m", "Make it a link in Git")
+    refused = commit(studio, change_id)
+    assert refused.status_code == 409 and "not a regular file" in refused.json()["detail"]

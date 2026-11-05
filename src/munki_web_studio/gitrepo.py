@@ -70,6 +70,11 @@ OVERRIDES = (
 )
 
 
+# Only ordinary files are committed; a path that is a link or a submodule in
+# the last commit is refused rather than given file contents.
+REGULAR_MODES = frozenset({"100644", "100755"})
+
+
 class GitError(Exception):
     pass
 
@@ -231,6 +236,8 @@ class Git:
         for path in paths:
             blob = self._exec(("hash-object", "-w", "--stdin"), stdin=files[path]).decode().strip()
             mode = old[path][0] if path in old else "100644"
+            if mode not in REGULAR_MODES:
+                raise GitError(f"{path} is not a regular file in the last commit")
             entries.append(f"{mode} {blob}\t{path}")
         index = self.hooks.parent / f"git-index-{secrets.token_hex(6)}"
         scratch = {"GIT_INDEX_FILE": str(index)}
