@@ -179,7 +179,10 @@ def create_app(
     app.include_router(worker_routes.router)
     app.include_router(worker_routes.settings_router)
     # With sign-in on, MCP requests need a studio bearer token (see auth/mcp.py).
-    app.mount("/mcp", mcp_app)
+    # Hosted, the endpoint exists only when the host gives a token verifier for
+    # it; otherwise the host serves the tools through its own MCP server.
+    if not hosted or mcp_auth is not None:
+        app.mount("/mcp", mcp_app)
 
     if (static_dir / "index.html").is_file():
         page = (static_dir / "index.html").read_text(encoding="utf-8")

@@ -157,3 +157,20 @@ def test_hosted_mcp_drafting_needs_the_hosts_token(
 
     with pytest.raises(ToolError, match="Sign in through the host"):
         asyncio.run(draft())
+
+
+def test_a_hosted_studio_has_no_open_mcp_endpoint(
+    mounted: tuple[TestClient, FastAPI, FastMCP],
+) -> None:
+    client, _, host_mcp = mounted
+    # Nothing answers there: the static workspace refuses the POST.
+    assert client.post("/munki/mcp/", json={}).status_code in (404, 405)
+
+    from fastmcp.exceptions import ToolError
+
+    async def search() -> None:
+        async with Client(host_mcp) as mcp:
+            await mcp.call_tool("munki_search_packages", {"query": "editor"})
+
+    with pytest.raises(ToolError, match="Sign in through the host"):
+        asyncio.run(search())

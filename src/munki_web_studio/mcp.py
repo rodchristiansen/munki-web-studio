@@ -134,6 +134,8 @@ def create_mcp(services: Services | None = None, auth: TokenVerifier | None = No
         return mcp
 
     def context(repo_id: str | None) -> tuple[Repository, Index]:
+        if services.hosted and get_access_token() is None:
+            raise PermissionError("Sign in through the host to use these tools")
         return services.repository(repo_id), services.require_index()
 
     @mcp.tool(annotations={"readOnlyHint": True})
