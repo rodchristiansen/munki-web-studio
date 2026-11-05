@@ -73,8 +73,13 @@ def _references(
         for item in cast(list[Any], items):
             if isinstance(item, dict):
                 entry = cast(dict[str, Any], item)
-                refs += _references(kind, entry, _text(entry.get("condition")) or condition)
+                refs += _references(kind, entry, condition_text(entry) or condition)
     return refs
+
+
+def condition_text(entry: dict[str, Any]) -> str | None:
+    """The condition of one conditional item, as text."""
+    return _text(entry.get("condition"))
 
 
 def split_item(item: str) -> tuple[str, str | None]:

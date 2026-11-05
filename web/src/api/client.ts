@@ -15,3 +15,5 @@ export type ObjectSummary = components["schemas"]["ObjectSummary"];
 export type ObjectDetail = components["schemas"]["ObjectDetail"];
 export type RepositoryInfo = components["schemas"]["RepositoryInfo"];
 export type PackageVersion = components["schemas"]["PackageVersion"];
+export type ManifestView = components["schemas"]["ManifestView"];
+export type ManifestSection = components["schemas"]["ManifestSection"];

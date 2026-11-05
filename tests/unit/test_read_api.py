@@ -136,3 +136,29 @@ def test_conditions_route_explains_a_manifest(client: TestClient) -> None:
 def test_package_fields_come_from_the_newest_version_that_sets_them(client: TestClient) -> None:
     browser = client.get("/api/repositories/fixture/packages/ExampleBrowser").json()
     assert browser["category"] == "Browsers"
+
+
+def test_manifest_view_lays_out_sections_includes_and_rules(client: TestClient) -> None:
+    view = client.get("/api/repositories/fixture/manifests/manifests/groups/design-lab").json()
+    assert view["name"] == "groups/design-lab"
+    assert view["catalogs"] == ["testing", "production"]
+    assert view["includes"] == [{"name": "site_default", "path": "manifests/site_default"}]
+    sections = {s["field"]: s["items"] for s in view["sections"]}
+    assert {"name": "ExampleEditor", "package": "ExampleEditor"} in sections["managed_installs"]
+    assert sections["managed_uninstalls"] == [{"name": "ExampleLegacy", "package": None}]
+    block = view["conditional"][0]
+    assert block["condition"]["rule"].startswith('machine type is "laptop"')
+    assert block["sections"][0]["items"][0]["name"] == "ExampleEditorPlugin"
+    assert view["included_by"] == ["manifests/computers/EXAMPLE-0001"]
+    assert {i["code"] for i in view["issues"]} == {"missing-package"}
+
+
+def test_manifest_view_reports_missing_includes(client: TestClient) -> None:
+    view = client.get("/api/repositories/fixture/manifests/manifests/groups/broken-refs").json()
+    assert view["includes"] == [{"name": "groups/does-not-exist", "path": None}]
+    assert (
+        client.get(
+            "/api/repositories/fixture/manifests/pkgsinfo/tools/ExampleRuntime-5.0.plist"
+        ).status_code
+        == 404
+    )

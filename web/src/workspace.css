@@ -187,3 +187,8 @@ body { min-height: 100vh; }
 .value-list { margin: 0; padding-left: 16px; }
 .value-list li { overflow-wrap: anywhere; }
 .package.invalid span { color: var(--warning); }
+.link { border: 0; background: transparent; padding: 0; color: var(--accent); text-align: left; }
+.link:hover { background: transparent; text-decoration: underline; }
+.conditional { margin: 10px 0; }
+.conditional .rule { font-size: 13px; margin-bottom: 6px; }
+.manifest-content.detail { max-width: none; }
