@@ -4,6 +4,7 @@ anything the repository names, and leaving non-Git repositories alone."""
 import os
 import shutil
 import subprocess
+import sys
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -269,6 +270,7 @@ def test_the_commit_holds_the_checked_bytes_even_if_the_file_changes(
     assert git(root, "show", f"HEAD:{EDITOR}").encode() == saved
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="Windows file names cannot contain *")
 def test_paths_are_literal_not_patterns(tmp_path: Path, root: Path) -> None:
     star = root / "pkgsinfo/apps/creative/Example*.plist"
     star.write_bytes((root / EDITOR).read_bytes().replace(b"ExampleEditor", b"ExampleStar"))
