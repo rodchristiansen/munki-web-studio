@@ -16,6 +16,7 @@ from pydantic import BaseModel
 
 from munki_web_studio.api import audit as audit_routes
 from munki_web_studio.api import changes as change_routes
+from munki_web_studio.api import jobs as job_routes
 from munki_web_studio.api import manifests, read
 from munki_web_studio.audit import AuditLog
 from munki_web_studio.auth import routes as auth_routes
@@ -24,6 +25,8 @@ from munki_web_studio.auth.model import Role
 from munki_web_studio.auth.sessions import SessionStore
 from munki_web_studio.changes.apply import recover
 from munki_web_studio.changes.store import ChangeSetStore
+from munki_web_studio.jobs.runner import Runner
+from munki_web_studio.jobs.store import JobStore
 from munki_web_studio.mcp import create_mcp
 from munki_web_studio.repository.config import Settings, load_settings
 from munki_web_studio.repository.index import Index
@@ -83,6 +86,8 @@ def create_app(
         drafts = ChangeSetStore(settings.state_dir / "drafts.sqlite")
         app.state.changes = drafts
         services.changes = drafts
+        jobs = JobStore(settings.state_dir / "jobs.sqlite")
+        app.state.jobs = jobs
         services.audit = audit
         app.state.journal_dir = settings.state_dir / "journal"
         app.state.auth = auth_routes.AuthState.create(settings.auth, store, oidc_http)
@@ -98,6 +103,10 @@ def create_app(
                         report.conflicts,
                     )
             scan(repo, index)
+        # The runner starts after the first scan, so jobs see a current index.
+        runner = Runner(jobs, settings, index)
+        app.state.runner = runner
+        runner.start()
         watcher = (
             asyncio.create_task(_watch(settings, index)) if settings.rescan_seconds > 0 else None
         )
@@ -107,6 +116,8 @@ def create_app(
         finally:
             if watcher:
                 watcher.cancel()
+            runner.stop()
+            jobs.close()
             index.close()
             store.close()
             audit.close()
@@ -129,6 +140,7 @@ def create_app(
     app.include_router(manifests.router, dependencies=viewer)
     app.include_router(change_routes.router)
     app.include_router(change_routes.fields_router, dependencies=viewer)
+    app.include_router(job_routes.router)
     # With sign-in on, MCP requests need a studio bearer token (see auth/mcp.py).
     app.mount("/mcp", mcp_app)
 

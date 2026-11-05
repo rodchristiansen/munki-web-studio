@@ -81,6 +81,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/operations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Operations
+         * @description What jobs this studio can run, and whether a worker for each is connected.
+         */
+        get: operations["operations_api_operations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/repositories": {
         parameters: {
             query?: never;
@@ -276,6 +296,91 @@ export interface paths {
          * @description Every condition in one manifest, as a readable rule or a located error.
          */
         get: operations["explain_conditions_api_repositories__repo_id__conditions__path__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/repositories/{repo_id}/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Jobs
+         * @description Recent jobs, newest first: the Activity view.
+         */
+        get: operations["list_jobs_api_repositories__repo_id__jobs_get"];
+        put?: never;
+        /**
+         * Submit Job
+         * @description Start a job. It is pinned to the repository's revision now; the same
+         *     idempotency key returns the existing job (status 200) instead of a second one.
+         */
+        post: operations["submit_job_api_repositories__repo_id__jobs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/repositories/{repo_id}/jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Job
+         * @description One job and its events after `after`, for clients that poll.
+         */
+        get: operations["get_job_api_repositories__repo_id__jobs__job_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/repositories/{repo_id}/jobs/{job_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel Job
+         * @description Cancel a queued job, or ask a running one to stop at its next checkpoint.
+         */
+        post: operations["cancel_job_api_repositories__repo_id__jobs__job_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/repositories/{repo_id}/jobs/{job_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Job Events
+         * @description Server-sent events for one job: each event as it happens, then `end`.
+         */
+        get: operations["job_events_api_repositories__repo_id__jobs__job_id__events_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -663,6 +768,64 @@ export interface components {
              */
             path: string | null;
         };
+        /** JobEventInfo */
+        JobEventInfo: {
+            /** At */
+            at: string;
+            /** Id */
+            id: number;
+            /** Kind */
+            kind: string;
+            /** Message */
+            message: string;
+            /** Progress */
+            progress: number | null;
+        };
+        /** JobInfo */
+        JobInfo: {
+            /** Arguments */
+            arguments: {
+                [key: string]: unknown;
+            };
+            /** Attempts */
+            attempts: number;
+            /** Cancel Requested */
+            cancel_requested: boolean;
+            /** Created At */
+            created_at: string;
+            /** Created By Name */
+            created_by_name: string;
+            /** Error */
+            error: string | null;
+            /** Events */
+            events?: components["schemas"]["JobEventInfo"][];
+            /** Finished At */
+            finished_at: string | null;
+            /** Id */
+            id: string;
+            /** Input Revision */
+            input_revision: string;
+            /** Max Attempts */
+            max_attempts: number;
+            /** Message */
+            message: string;
+            /** Operation */
+            operation: string;
+            /** Progress */
+            progress: number;
+            /** Repo Id */
+            repo_id: string;
+            /** Result */
+            result: unknown;
+            /** Result Hash */
+            result_hash: string | null;
+            /** Status */
+            status: string;
+            /** Title */
+            title: string;
+            /** Updated At */
+            updated_at: string;
+        };
         /** ManifestEdit */
         ManifestEdit: {
             /**
@@ -726,6 +889,20 @@ export interface components {
              * @default Untitled change
              */
             title: string;
+        };
+        /** NewJob */
+        NewJob: {
+            /** Arguments */
+            arguments?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Idempotency Key
+             * @description Sending the same key again returns the job it first created
+             */
+            idempotency_key?: string | null;
+            /** Operation */
+            operation: string;
         };
         /** ObjectDetail */
         ObjectDetail: {
@@ -802,6 +979,20 @@ export interface components {
             status: string;
             /** Version */
             version: string | null;
+        };
+        /** OperationInfo */
+        OperationInfo: {
+            /**
+             * Available
+             * @description Whether a worker that can run it is connected
+             */
+            available: boolean;
+            /** Name */
+            name: string;
+            /** Requirements */
+            requirements: string[];
+            /** Title */
+            title: string;
         };
         /** Package */
         Package: {
@@ -1074,6 +1265,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Health"];
+                };
+            };
+        };
+    };
+    operations_api_operations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationInfo"][];
                 };
             };
         };
@@ -1460,6 +1671,177 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConditionInfo"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_jobs_api_repositories__repo_id__jobs_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                before?: string | null;
+            };
+            header?: never;
+            path: {
+                repo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobInfo"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_job_api_repositories__repo_id__jobs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                repo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewJob"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobInfo"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_job_api_repositories__repo_id__jobs__job_id__get: {
+        parameters: {
+            query?: {
+                after?: number;
+            };
+            header?: never;
+            path: {
+                repo_id: string;
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobInfo"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_job_api_repositories__repo_id__jobs__job_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                repo_id: string;
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobInfo"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    job_events_api_repositories__repo_id__jobs__job_id__events_get: {
+        parameters: {
+            query?: {
+                after?: number;
+            };
+            header?: {
+                "last-event-id"?: number | null;
+            };
+            path: {
+                repo_id: string;
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": unknown;
                 };
             };
             /** @description Validation Error */

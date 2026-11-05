@@ -56,6 +56,20 @@ overwriting that change. If clients read the folder directly, mark it
 `live = true`: the studio then asks for an explicit confirmation before each
 save, because the change reaches clients at once.
 
+## Jobs
+
+Work that takes a while runs as a job: validating the repository, re-reading
+every file, and later catalog generation and imports. Start one from Activity.
+Jobs are kept in the studio's state folder, so closing the browser or
+restarting the studio does not lose one; a job queued before a restart runs
+after it. Each job is pinned to the repository revision it started from, tries
+again a bounded number of times if its worker stops responding, and records
+its result exactly once. Activity follows a running job live and falls back to
+polling when it cannot hold a stream open.
+
+Jobs that need tools the studio does not have, such as Munki's own command-line
+tools, are refused with the capability they need instead of waiting in a queue.
+
 ## Sign-in
 
 Without an `[auth]` table the studio is single-user and answers only on this
