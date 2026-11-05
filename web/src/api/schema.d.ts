@@ -200,6 +200,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/repositories/{repo_id}/changesets/{change_id}/manifest/{path}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Edit Manifest Sections
+         * @description Set manifest sections (catalogs, includes, item lists) in a draft. Each list is
+         *     taken whole and in order; the draft records the smallest change that gets there.
+         */
+        patch: operations["edit_manifest_sections_api_repositories__repo_id__changesets__change_id__manifest__path__patch"];
+        trace?: never;
+    };
     "/api/repositories/{repo_id}/changesets/{change_id}/pkginfo/{path}": {
         parameters: {
             query?: never;
@@ -620,6 +641,21 @@ export interface components {
              * @description Path of the included manifest; null when missing
              */
             path: string | null;
+        };
+        /** ManifestEdit */
+        ManifestEdit: {
+            /**
+             * Base Revision
+             * @description Revision of the manifest the edits were made on
+             */
+            base_revision: string;
+            /**
+             * Sections
+             * @description Each section's complete new list, in order; an empty list removes it
+             */
+            sections: {
+                [key: string]: string[];
+            };
         };
         /** ManifestItem */
         ManifestItem: {
@@ -1234,6 +1270,43 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["FileEdit"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangeSetInfo"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    edit_manifest_sections_api_repositories__repo_id__changesets__change_id__manifest__path__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                repo_id: string;
+                change_id: string;
+                path: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ManifestEdit"];
             };
         };
         responses: {

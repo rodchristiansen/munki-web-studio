@@ -522,6 +522,32 @@
         "title": "IncludedManifest",
         "type": "object"
       },
+      "ManifestEdit": {
+        "properties": {
+          "base_revision": {
+            "description": "Revision of the manifest the edits were made on",
+            "title": "Base Revision",
+            "type": "string"
+          },
+          "sections": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "description": "Each section's complete new list, in order; an empty list removes it",
+            "title": "Sections",
+            "type": "object"
+          }
+        },
+        "required": [
+          "base_revision",
+          "sections"
+        ],
+        "title": "ManifestEdit",
+        "type": "object"
+      },
       "ManifestItem": {
         "properties": {
           "name": {
@@ -1905,6 +1931,77 @@
           }
         },
         "summary": "Put File Edits",
+        "tags": [
+          "changes"
+        ]
+      }
+    },
+    "/api/repositories/{repo_id}/changesets/{change_id}/manifest/{path}": {
+      "patch": {
+        "description": "Set manifest sections (catalogs, includes, item lists) in a draft. Each list is\ntaken whole and in order; the draft records the smallest change that gets there.",
+        "operationId": "edit_manifest_sections_api_repositories__repo_id__changesets__change_id__manifest__path__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repo_id",
+            "required": true,
+            "schema": {
+              "title": "Repo Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "change_id",
+            "required": true,
+            "schema": {
+              "title": "Change Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManifestEdit"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeSetInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Edit Manifest Sections",
         "tags": [
           "changes"
         ]
