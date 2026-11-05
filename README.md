@@ -132,17 +132,56 @@ too, and `--json` prints a machine-readable report:
 mwsctl validate --repo /path/to/repo
 ```
 
-## MCP server
+### Drafts
 
-The studio includes an MCP server with read-only tools: search_packages,
-get_pkginfo, get_manifest, where_used, explain_conditions and
-validate_repository, plus a studio://layout resource. `mwsctl serve` exposes it
-at `/mcp`. To give an assistant on this machine direct access to a repository
-folder over stdio, run:
+The `drafts` commands work on a running studio, with the same drafts the browser
+shows, so a change can be started in one and finished in the other. Start a
+draft; the command prints its id:
 
 ```sh
-mwsctl mcp --repo /path/to/repo
+mwsctl drafts create "Move Editor to production" --url https://studio.example.org
 ```
+
+Add pkginfo field edits to it. Lists are comma-separated and booleans take true
+or false; `mwsctl drafts fields` lists the fields:
+
+```sh
+mwsctl drafts edit <id> pkgsinfo/apps/Editor-2.10.plist --set catalogs=testing,production --url https://studio.example.org
+```
+
+See the exact diff, then save. Saving shows the diff again and asks first:
+
+```sh
+mwsctl drafts diff <id> --url https://studio.example.org
+```
+
+```sh
+mwsctl drafts save <id> --url https://studio.example.org
+```
+
+`drafts list`, `drafts show` and `drafts discard` cover the rest. Set
+`MWSCTL_URL` to leave out `--url`.
+
+## MCP server
+
+The studio includes an MCP server. Read tools: search_packages, get_pkginfo,
+get_manifest, where_used, explain_conditions, validate_repository and
+list_changes. Draft tools, for Editors: draft_pkginfo_edit, draft_manifest_edit
+and draft_catalog_move. Draft tools add to the caller's open draft, which then
+appears in the studio for review; no tool saves, so an assistant's change reaches
+the repository only when a person saves it. Resources: studio://layout and
+studio://fields.
+
+`mwsctl serve` exposes it at `/mcp`. To give an assistant on this machine
+direct access over stdio, run it with the studio's config file, so its drafts
+land where the studio shows them:
+
+```sh
+mwsctl mcp --config /path/to/studio.toml
+```
+
+`mwsctl mcp --repo /path/to/repo` serves a folder on its own; its drafts last
+only as long as that server.
 
 ## Development
 

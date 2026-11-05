@@ -12,14 +12,13 @@ from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
 from munki_web_studio.auth.config import AuthSettings
-from munki_web_studio.auth.model import Role, User
+from munki_web_studio.auth.model import LOCAL_USER, Role, User
 from munki_web_studio.auth.oidc import OIDCClient, SignInError, pkce_pair
 from munki_web_studio.auth.sessions import Session, SessionStore
 
 COOKIE = "studio_session"
 CSRF_HEADER = "x-csrf-token"
 SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
-LOCAL_USER = User(subject="local", name="Local administrator", email=None, role=Role.ADMINISTRATOR)
 
 
 @dataclass

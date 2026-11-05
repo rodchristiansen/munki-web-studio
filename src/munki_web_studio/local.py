@@ -273,6 +273,9 @@ def token_command(
 
 
 def register(cli: typer.Typer) -> None:
+    from munki_web_studio.drafts import drafts
+
+    cli.add_typer(drafts, name="drafts")
     cli.command("login")(login_command)
     cli.command("logout")(logout_command)
     cli.command("token")(token_command)

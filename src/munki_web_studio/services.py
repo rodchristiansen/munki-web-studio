@@ -3,6 +3,8 @@ repositories and their index."""
 
 from dataclasses import dataclass
 
+from munki_web_studio.audit import AuditLog
+from munki_web_studio.changes.store import ChangeSetStore
 from munki_web_studio.repository.config import Repository, Settings
 from munki_web_studio.repository.index import Index
 
@@ -15,6 +17,8 @@ class NoRepositoryError(LookupError):
 class Services:
     settings: Settings
     index: Index | None = None
+    changes: ChangeSetStore | None = None
+    audit: AuditLog | None = None
 
     def repository(self, repo_id: str | None = None) -> Repository:
         """The named repository, or the first one when no name is given."""
@@ -31,3 +35,8 @@ class Services:
         if self.index is None:
             raise NoRepositoryError("The repository index is not open yet")
         return self.index
+
+    def require_changes(self) -> ChangeSetStore:
+        if self.changes is None:
+            raise NoRepositoryError("Drafts are not available in this server")
+        return self.changes

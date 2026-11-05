@@ -71,9 +71,15 @@ def mcp(
         Path | None, typer.Option(help="Serve the repositories in this config file.")
     ] = None,
 ) -> None:
-    """Run the MCP server over stdio, for assistants on this machine."""
+    """Run the MCP server over stdio, for assistants on this machine.
+
+    With --config, drafts go into the same state folder as `serve`, so they show
+    up for review in the studio. With --repo they last only as long as the server.
+    """
     import tempfile
 
+    from munki_web_studio.audit import AuditLog
+    from munki_web_studio.changes.store import ChangeSetStore
     from munki_web_studio.mcp import create_mcp
     from munki_web_studio.repository.config import Repository, Settings, load_settings
     from munki_web_studio.repository.index import Index
@@ -92,7 +98,14 @@ def mcp(
         index = Index(settings.state_dir / "index.sqlite")
         for repository in settings.repositories:
             scan(repository, index)
-        create_mcp(Services(settings, index)).run(show_banner=False)
+        changes = ChangeSetStore(settings.state_dir / "drafts.sqlite")
+        audit = AuditLog(settings.state_dir / "audit.sqlite")
+        try:
+            create_mcp(Services(settings, index, changes, audit)).run(show_banner=False)
+        finally:
+            changes.close()
+            audit.close()
+            index.close()
 
 
 from munki_web_studio import local  # noqa: E402
