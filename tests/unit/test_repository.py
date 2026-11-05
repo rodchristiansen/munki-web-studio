@@ -243,3 +243,28 @@ def test_a_junction_swapped_in_after_the_check_is_refused(
     monkeypatch.setattr(paths, "contained", check_then_swap)
     with pytest.raises(PathEscapeError, match="leaves the repository"):
         paths.read_contained(repo.root, "manifests/swap/late.plist", 1024)
+
+
+def test_a_refused_rename_is_retried_only_on_windows(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from munki_web_studio.repository import paths
+
+    calls: list[int] = []
+    real = os.replace
+
+    def busy_twice(source: Path, destination: Path) -> None:
+        calls.append(1)
+        if len(calls) <= 2:
+            raise PermissionError(13, "in use")
+        real(source, destination)
+
+    (tmp_path / "a").mkdir()
+    monkeypatch.setattr(paths.os, "replace", busy_twice)
+    if sys.platform == "win32":
+        paths.replace(tmp_path / "a", tmp_path / "b")
+        assert (tmp_path / "b").is_dir() and len(calls) == 3
+    else:
+        with pytest.raises(PermissionError):
+            paths.replace(tmp_path / "a", tmp_path / "b")
+        assert len(calls) == 1
