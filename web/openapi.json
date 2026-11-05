@@ -157,6 +157,62 @@
         "title": "CatalogSummary",
         "type": "object"
       },
+      "ChangeSetInfo": {
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/FileDraftInfo"
+            },
+            "title": "Files",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "owner": {
+            "title": "Owner",
+            "type": "string"
+          },
+          "owner_name": {
+            "title": "Owner Name",
+            "type": "string"
+          },
+          "repo_id": {
+            "title": "Repo Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "repo_id",
+          "owner",
+          "owner_name",
+          "title",
+          "status",
+          "created_at",
+          "updated_at",
+          "files"
+        ],
+        "title": "ChangeSetInfo",
+        "type": "object"
+      },
       "ConditionInfo": {
         "properties": {
           "column": {
@@ -291,6 +347,96 @@
           "message"
         ],
         "title": "Diagnostic",
+        "type": "object"
+      },
+      "FileDraftInfo": {
+        "properties": {
+          "base_revision": {
+            "title": "Base Revision",
+            "type": "string"
+          },
+          "changes": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Changes",
+            "type": "array"
+          },
+          "conflict": {
+            "title": "Conflict",
+            "type": "boolean"
+          },
+          "current_revision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Revision"
+          },
+          "diff": {
+            "title": "Diff",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "surgical": {
+            "title": "Surgical",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "path",
+          "base_revision",
+          "current_revision",
+          "changes",
+          "conflict",
+          "error",
+          "surgical",
+          "diff"
+        ],
+        "title": "FileDraftInfo",
+        "type": "object"
+      },
+      "FileEdit": {
+        "properties": {
+          "base_revision": {
+            "description": "Revision of the file the edits were made on",
+            "title": "Base Revision",
+            "type": "string"
+          },
+          "changes": {
+            "description": "Edits: {op: set|append|delete, path: [...], value: tagged JSON}; an empty list removes the file from the draft",
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Changes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "base_revision",
+          "changes"
+        ],
+        "title": "FileEdit",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -482,6 +628,18 @@
           "issues"
         ],
         "title": "ManifestView",
+        "type": "object"
+      },
+      "NewChangeSet": {
+        "properties": {
+          "title": {
+            "default": "Untitled change",
+            "maxLength": 200,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "title": "NewChangeSet",
         "type": "object"
       },
       "ObjectDetail": {
@@ -1433,6 +1591,275 @@
         "summary": "Get Catalog",
         "tags": [
           "repositories"
+        ]
+      }
+    },
+    "/api/repositories/{repo_id}/changesets": {
+      "get": {
+        "description": "Your open change sets; Administrators see everyone's.",
+        "operationId": "list_change_sets_api_repositories__repo_id__changesets_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repo_id",
+            "required": true,
+            "schema": {
+              "title": "Repo Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ChangeSetInfo"
+                  },
+                  "title": "Response List Change Sets Api Repositories  Repo Id  Changesets Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Change Sets",
+        "tags": [
+          "changes"
+        ]
+      },
+      "post": {
+        "operationId": "create_change_set_api_repositories__repo_id__changesets_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repo_id",
+            "required": true,
+            "schema": {
+              "title": "Repo Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewChangeSet"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeSetInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Change Set",
+        "tags": [
+          "changes"
+        ]
+      }
+    },
+    "/api/repositories/{repo_id}/changesets/{change_id}": {
+      "delete": {
+        "operationId": "discard_change_set_api_repositories__repo_id__changesets__change_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repo_id",
+            "required": true,
+            "schema": {
+              "title": "Repo Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "change_id",
+            "required": true,
+            "schema": {
+              "title": "Change Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeSetInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Discard Change Set",
+        "tags": [
+          "changes"
+        ]
+      },
+      "get": {
+        "description": "A change set with each file's diff and whether it still applies.",
+        "operationId": "get_change_set_api_repositories__repo_id__changesets__change_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repo_id",
+            "required": true,
+            "schema": {
+              "title": "Repo Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "change_id",
+            "required": true,
+            "schema": {
+              "title": "Change Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeSetInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Change Set",
+        "tags": [
+          "changes"
+        ]
+      }
+    },
+    "/api/repositories/{repo_id}/changesets/{change_id}/files/{path}": {
+      "put": {
+        "description": "Replace one file's edits in a draft.",
+        "operationId": "put_file_edits_api_repositories__repo_id__changesets__change_id__files__path__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repo_id",
+            "required": true,
+            "schema": {
+              "title": "Repo Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "change_id",
+            "required": true,
+            "schema": {
+              "title": "Change Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FileEdit"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeSetInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put File Edits",
+        "tags": [
+          "changes"
         ]
       }
     },

@@ -15,12 +15,15 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from munki_web_studio.api import audit as audit_routes
+from munki_web_studio.api import changes as change_routes
 from munki_web_studio.api import manifests, read
 from munki_web_studio.audit import AuditLog
 from munki_web_studio.auth import routes as auth_routes
 from munki_web_studio.auth.mcp import StudioTokenVerifier
 from munki_web_studio.auth.model import Role
 from munki_web_studio.auth.sessions import SessionStore
+from munki_web_studio.changes.apply import recover
+from munki_web_studio.changes.store import ChangeSetStore
 from munki_web_studio.mcp import create_mcp
 from munki_web_studio.repository.config import Settings, load_settings
 from munki_web_studio.repository.index import Index
@@ -77,11 +80,21 @@ def create_app(
         holder["store"] = store
         audit = AuditLog(settings.state_dir / "audit.sqlite")
         app.state.audit = audit
+        drafts = ChangeSetStore(settings.state_dir / "drafts.sqlite")
+        app.state.changes = drafts
+        app.state.journal_dir = settings.state_dir / "journal"
         app.state.auth = auth_routes.AuthState.create(settings.auth, store, oidc_http)
         app.state.settings = settings
         app.state.index = index
         services.index = index
         for repo in settings.repositories:
+            for report in recover(repo, app.state.journal_dir):
+                if report.conflicts:
+                    logger.error(
+                        "Unfinished save %s blocked by edits to %s",
+                        report.journal,
+                        report.conflicts,
+                    )
             scan(repo, index)
         watcher = (
             asyncio.create_task(_watch(settings, index)) if settings.rescan_seconds > 0 else None
@@ -95,6 +108,7 @@ def create_app(
             index.close()
             store.close()
             audit.close()
+            drafts.close()
 
     app = FastAPI(title=STUDIO.name, version=__version__, lifespan=lifespan)
     # Refuse requests addressed to any other host name, so a web page cannot use
@@ -111,6 +125,7 @@ def create_app(
     app.include_router(audit_routes.router)
     app.include_router(read.router, dependencies=viewer)
     app.include_router(manifests.router, dependencies=viewer)
+    app.include_router(change_routes.router)
     # With sign-in on, MCP requests need a studio bearer token (see auth/mcp.py).
     app.mount("/mcp", mcp_app)
 
