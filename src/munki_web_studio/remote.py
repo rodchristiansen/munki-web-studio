@@ -67,15 +67,39 @@ def api(url: str) -> httpx.Client:
 
 
 def get(url: str, path: str, **params: Any) -> Any:
+    return call(url, "GET", path, params=params)
+
+
+def _detail(response: httpx.Response) -> str:
+    try:
+        detail = response.json().get("detail", response.text)
+    except ValueError:
+        return response.text
+    if isinstance(detail, dict):
+        return str(cast(dict[str, Any], detail).get("message", detail))
+    return str(detail)
+
+
+def call(
+    url: str,
+    method: str,
+    path: str,
+    body: Any = None,
+    params: dict[str, Any] | None = None,
+) -> Any:
+    """One API request with the stored token. Exits with a message on an error."""
     with api(url) as client:
-        response = client.get(path, params={k: v for k, v in params.items() if v is not None})
+        response = client.request(
+            method,
+            path,
+            json=body,
+            params={k: v for k, v in (params or {}).items() if v is not None},
+        )
     if response.status_code == 401:
         typer.echo(f"Not signed in to {url}; run `{STUDIO.command} login --url {url}`", err=True)
         raise typer.Exit(2)
     if response.status_code >= 400:
-        typer.echo(
-            f"{response.status_code}: {response.json().get('detail', response.text)}", err=True
-        )
+        typer.echo(f"{response.status_code}: {_detail(response)}", err=True)
         raise typer.Exit(1)
     return response.json()
 

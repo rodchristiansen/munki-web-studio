@@ -68,6 +68,12 @@ FleetMate's `fmwsctl` includes both studios' commands as subcommands
 packages, plus commands for the combined deployment. Each studio's own command
 can also point at a FleetMate deployment with the studio's prefix.
 
-## Not yet decided
+## Subcommands
 
-- The subcommand list, settled when the first slice is built.
+Local, on a repository folder or a running studio with `--url`: `search`,
+`show`, `where-used`, `validate`. Sign-in: `login`, `logout`, `token`. Servers:
+`serve`, `mcp`, `openapi`.
+
+Drafts, on a running studio: `drafts list`, `create`, `show`, `diff`, `fields`,
+`edit`, `save`, `discard`. `save` prints the diff and asks unless `--yes` is
+given, and says so first when the repository is live. `discard` asks too.

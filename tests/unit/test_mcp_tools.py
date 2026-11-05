@@ -22,7 +22,9 @@ READ_TOOLS = {
     "where_used",
     "explain_conditions",
     "validate_repository",
+    "list_changes",
 }
+DRAFT_TOOLS = {"draft_pkginfo_edit", "draft_manifest_edit", "draft_catalog_move"}
 
 
 @pytest.fixture
@@ -50,8 +52,11 @@ def test_lists_every_read_tool_and_marks_it_read_only(services: Services) -> Non
             return await client.list_tools()
 
     tools = asyncio.run(run())
-    assert {t.name for t in tools} == READ_TOOLS
-    assert all(t.annotations and t.annotations.read_only_hint for t in tools)
+    assert {t.name for t in tools} == READ_TOOLS | DRAFT_TOOLS
+    for tool in tools:
+        assert tool.annotations is not None
+        assert tool.annotations.read_only_hint is (tool.name in READ_TOOLS)
+        assert not tool.annotations.destructive_hint
 
 
 def test_search_and_get_pkginfo(services: Services) -> None:

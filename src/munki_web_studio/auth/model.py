@@ -32,3 +32,7 @@ class User:
     name: str
     email: str | None
     role: Role
+
+
+# Who acts when the studio runs without sign-in, on this machine only.
+LOCAL_USER = User(subject="local", name="Local administrator", email=None, role=Role.ADMINISTRATOR)

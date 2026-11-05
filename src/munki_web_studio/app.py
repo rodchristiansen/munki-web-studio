@@ -82,6 +82,8 @@ def create_app(
         app.state.audit = audit
         drafts = ChangeSetStore(settings.state_dir / "drafts.sqlite")
         app.state.changes = drafts
+        services.changes = drafts
+        services.audit = audit
         app.state.journal_dir = settings.state_dir / "journal"
         app.state.auth = auth_routes.AuthState.create(settings.auth, store, oidc_http)
         app.state.settings = settings

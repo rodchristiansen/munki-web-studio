@@ -1,6 +1,6 @@
 # MCP server
 
-Status: decided 2026-11-04 to build in; tool list is a proposal. This page is kept
+Status: decided 2026-11-04 to build in; read and draft tools built 2026-11-05. This page is kept
 identical in Munki Web Studio and Cimian Web Studio.
 
 ## What it is
@@ -40,7 +40,7 @@ and audit apply exactly as they do in the browser.
    payload hashes are returned only when asked for by name.
 6. **No execution.** No tool runs installer payloads, scripts, or shell commands.
 
-## Proposed tools
+## Tools
 
 | Tool                  | Kind  | Purpose                                                            |
 | --------------------- | ----- | ------------------------------------------------------------------ |
@@ -55,8 +55,17 @@ and audit apply exactly as they do in the browser.
 | `draft_manifest_edit` | Draft | Propose adding, removing, or moving manifest items                 |
 | `draft_catalog_move`  | Draft | Propose catalog membership changes for packages                    |
 
-Resources expose the repository layout and each studio's field schema, so an
-agent knows which fields exist before it proposes an edit.
+Resources expose the repository layout (`studio://layout`) and each studio's
+field schema (`studio://fields`), so an agent knows which fields exist before it
+proposes an edit.
+
+Draft tools add to the caller's most recent open change set, or start one, unless
+a `change_set` id is given. Each returns the draft with every file's diff, the
+same view the studio's review shows. `draft_manifest_edit` takes `add`, `remove`
+and `order` (a section's whole new list, for moving items) by section name.
+`draft_catalog_move` changes the `catalogs` key of each pkginfo it is given; the
+catalog files are rebuilt later by `makecatalogs`. Draft tools are annotated as
+not read-only and not destructive, since they never touch the repository.
 
 ## Not yet decided
 
