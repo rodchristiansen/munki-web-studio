@@ -650,6 +650,10 @@
             "title": "Path",
             "type": "string"
           },
+          "revision": {
+            "title": "Revision",
+            "type": "string"
+          },
           "sections": {
             "items": {
               "$ref": "#/components/schemas/ManifestSection"
@@ -665,6 +669,7 @@
         "required": [
           "path",
           "name",
+          "revision",
           "status",
           "diagnostic",
           "catalogs",

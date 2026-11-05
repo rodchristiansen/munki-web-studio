@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
-import type { ObjectDetail, Package } from "../api/client";
+import type { FileDraftInfo, ObjectDetail, Package } from "../api/client";
+import { draftedFields } from "../draft";
 import { TABS, type FieldSpec } from "../platform";
 import { decode, type Value } from "../tagged";
 import { asDict, items, lookup, show, type Dict } from "../values";
@@ -9,15 +10,21 @@ interface Props {
   detail: ObjectDetail;
   pkg: Package | undefined;
   onSelectVersion: (path: string) => void;
+  /** Field types the server lets this person edit; empty when they cannot edit. */
+  editable?: Record<string, string>;
+  fileDraft?: FileDraftInfo;
+  onEdit?: (key: string, value: Value | null) => void;
 }
 
 const LISTED = new Set(TABS.flatMap((t) => t.sections.flatMap((s) => s.fields.map((f) => f.key.split(".")[0]))));
 
-export function PackageEditor({ detail, pkg, onSelectVersion }: Props) {
+export function PackageEditor({ detail, pkg, onSelectVersion, editable = {}, fileDraft, onEdit }: Props) {
   const [tab, setTab] = useState(TABS[0]?.name ?? "Overview");
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const data = asDict(detail.data === null || detail.data === undefined ? undefined : decode(detail.data));
   const names = TABS.map((t) => t.name);
+  const drafted = draftedFields(fileDraft);
+  const valueOf = (key: string) => (drafted.has(key) ? (drafted.get(key) ?? undefined) : lookup(data, key));
 
   function onTabKey(event: React.KeyboardEvent, index: number) {
     const next =
@@ -100,9 +107,22 @@ export function PackageEditor({ detail, pkg, onSelectVersion }: Props) {
                   <section className="editor-section" key={section.title}>
                     <h3>{section.title}</h3>
                     <div className="card-fields">
-                      {section.fields.map((f) => (
-                        <Field key={f.key} spec={f} value={lookup(data, f.key)} />
-                      ))}
+                      {section.fields.map((f) => {
+                        const type = editable[f.key];
+                        const value = valueOf(f.key);
+                        return type && onEdit ? (
+                          <EditableField
+                            key={`${f.key}:${detail.revision}:${show(value)}`}
+                            spec={f}
+                            type={type}
+                            value={value}
+                            changed={drafted.has(f.key)}
+                            onEdit={(v) => onEdit(f.key, v)}
+                          />
+                        ) : (
+                          <Field key={f.key} spec={f} value={value} />
+                        );
+                      })}
                     </div>
                   </section>
                 ))}
@@ -113,6 +133,62 @@ export function PackageEditor({ detail, pkg, onSelectVersion }: Props) {
         </>
       )}
     </article>
+  );
+}
+
+/** A control for one editable field. It sends the value when focus leaves it, so a
+ * draft is not rewritten on every keystroke. Clearing a field removes the key. */
+function EditableField({
+  spec,
+  type,
+  value,
+  changed,
+  onEdit,
+}: {
+  spec: FieldSpec;
+  type: string;
+  value: Value | undefined;
+  changed: boolean;
+  onEdit: (value: Value | null) => void;
+}) {
+  const initial = type === "string-list" ? items(value).join("\n") : value === undefined ? "" : show(value);
+  const [text, setText] = useState(initial);
+  const label = (
+    <span className="field-label">
+      {spec.label}
+      {changed && <small className="drafted">Edited</small>}
+    </span>
+  );
+  if (type === "boolean") {
+    const current = value === true ? "yes" : value === false ? "no" : "";
+    return (
+      <label className="field">
+        {label}
+        <select value={current} onChange={(e) => onEdit(e.target.value === "" ? null : e.target.value === "yes")}>
+          <option value="">Not set</option>
+          <option value="yes">Yes</option>
+          <option value="no">No</option>
+        </select>
+      </label>
+    );
+  }
+  function commit() {
+    if (text === initial) return;
+    if (type === "string-list") {
+      const list = text.split("\n").map((line) => line.trim()).filter(Boolean);
+      onEdit(list.length ? list : null);
+    } else onEdit(text === "" ? null : text);
+  }
+  const multiline = type === "text" || type === "string-list";
+  return (
+    <label className="field">
+      {label}
+      {multiline ? (
+        <textarea value={text} placeholder={type === "string-list" ? "One per line" : "Not set"} onChange={(e) => setText(e.target.value)} onBlur={commit} />
+      ) : (
+        <input value={text} placeholder="Not set" onChange={(e) => setText(e.target.value)} onBlur={commit} onKeyDown={(e) => e.key === "Enter" && commit()} />
+      )}
+    </label>
   );
 }
 

@@ -712,6 +712,8 @@ export interface components {
             name: string;
             /** Path */
             path: string;
+            /** Revision */
+            revision: string;
             /** Sections */
             sections: components["schemas"]["ManifestSection"][];
             /** Status */

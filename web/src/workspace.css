@@ -195,3 +195,16 @@ body { min-height: 100vh; }
 .notice { display: flex; gap: 12px; align-items: center; justify-content: space-between; padding: 8px 16px; font-size: 12px; background: color-mix(in srgb, var(--accent) 14%, var(--surface)); border-bottom: 1px solid var(--line); }
 .rescan { font-size: 11px; margin-top: 4px; }
 .signed-in { font-size: 11px; color: var(--text); }
+.field-label { display: flex; gap: 8px; align-items: baseline; }
+.drafted { color: var(--accent); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+.draft-pill { background: color-mix(in srgb, var(--accent) 18%, var(--surface)); border-color: var(--accent); font-size: 12px; }
+.edit-list li { align-items: center; }
+.edit-list .row-actions { display: flex; gap: 4px; }
+.edit-list .row-actions button { padding: 2px 7px; font-size: 11px; }
+.add-row { display: flex; gap: 6px; margin-top: 6px; }
+.add-row input, .add-row select { flex: 1; }
+.review-file { border-top: 1px solid var(--line); padding-top: 12px; margin-top: 12px; }
+.review-file .badge { font-size: 11px; color: var(--warning); margin-left: 8px; }
+.review-actions { display: flex; gap: 8px; margin-top: 8px; }
+.live-confirm { display: flex; gap: 8px; align-items: center; font-size: 12px; margin-top: 14px; }
+.review-list { max-height: 55vh; overflow: auto; }

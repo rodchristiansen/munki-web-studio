@@ -5,9 +5,12 @@ import { Icon } from "./components/Icon";
 import { ManifestsWorkspace } from "./components/ManifestsWorkspace";
 import { PackageEditor } from "./components/PackageEditor";
 import { PackageList } from "./components/PackageList";
+import { ReviewDialog } from "./components/ReviewDialog";
+import { useDraft } from "./draft";
 import { readState, toSearch, type WorkspaceState } from "./url";
 
 const POLL_MS = 15_000;
+const EDIT_ROLES = new Set(["Editor", "Publisher", "Administrator"]);
 
 type Load<T> = { status: "loading" } | { status: "ready"; value: T } | { status: "error"; message: string };
 
@@ -133,6 +136,20 @@ export function App() {
     return () => controller.abort();
   }, [repoId, state.q, generation]);
 
+  // Editing needs a writable repository and at least the Editor role.
+  const canEdit = Boolean(repo?.writable && session && EDIT_ROLES.has(session.role));
+  const draft = useDraft(repoId, canEdit);
+  const [fieldTypes, setFieldTypes] = useState<Record<string, string>>({});
+  const [reviewing, setReviewing] = useState(false);
+  useEffect(() => {
+    if (!canEdit) return;
+    api
+      .GET("/api/fields")
+      .then(({ data }) => data && setFieldTypes(data))
+      .catch(() => undefined);
+  }, [canEdit]);
+  const draftCount = draft.draft?.files.length ?? 0;
+
   const pkgs = packages.status === "ready" ? packages.value : [];
   const selectedPath = state.path ?? pkgs[0]?.versions[pkgs[0].versions.length - 1]?.path ?? null;
 
@@ -184,7 +201,17 @@ export function App() {
               </select>
             </label>
           )}
-          <span className="pill">Read-only</span>
+          {canEdit ? (
+            draftCount > 0 ? (
+              <button type="button" className="draft-pill" onClick={() => setReviewing(true)}>
+                Review draft · {draftCount} {draftCount === 1 ? "file" : "files"}
+              </button>
+            ) : (
+              <span className="pill">No unsaved edits</span>
+            )
+          ) : (
+            <span className="pill">Read-only</span>
+          )}
         </div>
       </header>
       <div className="layout">
@@ -220,6 +247,11 @@ export function App() {
           </div>
         </nav>
         <div className="workspace">
+          {draft.error && (
+            <div className="notice" role="alert">
+              {draft.error}
+            </div>
+          )}
           {notice && (
             <div className="notice" role="status">
               {notice}
@@ -239,6 +271,9 @@ export function App() {
               selected={state.manifest}
               query={state.q}
               onSelect={(manifest) => update({ manifest })}
+              canEdit={canEdit}
+              fileDraft={draft.fileDraft}
+              onEdit={(path, base, sections) => void draft.editSections(path, base, sections)}
               onQuery={(q) => update({ q }, "replace")}
               onOpenPackage={(name) => {
                 const pkg = pkgs.find((p) => p.name === name);
@@ -260,7 +295,17 @@ export function App() {
                   onSelect={(path) => update({ path })}
                 />
                 {detail?.status === "ready" ? (
-                  <PackageEditor detail={detail.value} pkg={selectedPackage} onSelectVersion={(path) => update({ path })} />
+                  <PackageEditor
+                    detail={detail.value}
+                    pkg={selectedPackage}
+                    onSelectVersion={(path) => update({ path })}
+                    editable={canEdit && detail.value.status === "ok" ? fieldTypes : {}}
+                    fileDraft={draft.fileDraft(detail.value.path)}
+                    onEdit={(key, value) => {
+                      const file = draft.fileDraft(detail.value.path);
+                      void draft.editFields(detail.value.path, file?.base_revision ?? detail.value.revision, { [key]: value });
+                    }}
+                  />
                 ) : (
                   <article className="detail">
                     <p className="sample-note">{detail?.status === "error" ? detail.message : detail ? "Loading…" : "Select a package"}</p>
@@ -271,8 +316,21 @@ export function App() {
           )}
         </div>
       </div>
+      {reviewing && draft.draft && (
+        <ReviewDialog
+          draft={draft}
+          live={Boolean(repo?.live)}
+          onClose={() => setReviewing(false)}
+          onSaved={(files) => {
+            setReviewing(false);
+            setNotice(`Saved ${files} ${files === 1 ? "file" : "files"} to the repository.`);
+            void rescanNow();
+            setGeneration((g) => g + 1);
+          }}
+        />
+      )}
       <footer className="statusbar">
-        <span role="status">{packages.status === "error" ? packages.message : repo ? `${repo.name} · read-only` : "Waiting for a repository"}</span>
+        <span role="status">{packages.status === "error" ? packages.message : repo ? `${repo.name} · ${canEdit ? "editing" : "read-only"}` : "Waiting for a repository"}</span>
         <span>{invalid.length ? `${invalid.length} invalid files` : " "}</span>
       </footer>
     </div>
