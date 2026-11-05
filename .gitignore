@@ -21,3 +21,6 @@ src/*/static/
 web/test-results/
 web/playwright-report/
 *.tsbuildinfo
+
+# Studio state written when it runs from the checkout
+/.state/

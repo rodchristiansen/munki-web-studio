@@ -18,6 +18,8 @@ export type PackageVersion = components["schemas"]["PackageVersion"];
 export type ManifestView = components["schemas"]["ManifestView"];
 export type ManifestSection = components["schemas"]["ManifestSection"];
 export type SessionInfo = components["schemas"]["SessionInfo"];
+export type ChangeSetInfo = components["schemas"]["ChangeSetInfo"];
+export type FileDraftInfo = components["schemas"]["FileDraftInfo"];
 
 // Changes carry the session's CSRF token; the server refuses them without it.
 let csrfToken = "";

@@ -20,6 +20,17 @@ export const PLATFORM = {
   descriptionLabel: "Shown in Managed Software Center",
 };
 
+// Manifest keys the manifests workspace edits, in the order it shows them.
+export const MANIFEST_INCLUDES = "included_manifests";
+export const MANIFEST_SECTIONS = [
+  "managed_installs",
+  "managed_uninstalls",
+  "managed_updates",
+  "optional_installs",
+  "featured_items",
+  "default_installs",
+];
+
 export const TABS: TabSpec[] = [
   {
     name: "Overview",

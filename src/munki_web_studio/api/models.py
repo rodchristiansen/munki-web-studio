@@ -142,6 +142,7 @@ class ConditionalBlock(BaseModel):
 class ManifestView(BaseModel):
     path: str
     name: str
+    revision: str
     status: str
     diagnostic: Diagnostic | None
     catalogs: list[str]

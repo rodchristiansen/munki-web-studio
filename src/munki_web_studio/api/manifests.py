@@ -64,6 +64,7 @@ def build_manifest_view(index: Index, repo: Repository, relative: str) -> Manife
     view = ManifestView(
         path=relative,
         name=name,
+        revision=obj.revision,
         status=obj.status,
         diagnostic=Diagnostic(message=obj.error, line=obj.error_line, column=obj.error_column)
         if obj.error
@@ -83,7 +84,9 @@ def build_manifest_view(index: Index, repo: Repository, relative: str) -> Manife
         read = read_contained(repo.root, relative, MAX_FILE_BYTES)
         if read.raw is None:
             raise ParseError("File is too large")
-        data = load(read.raw).data
+        document = load(read.raw)
+        data = document.data
+        view.revision = document.revision
     except (PathEscapeError, ParseError, OSError) as error:
         view.status = "invalid"
         view.diagnostic = Diagnostic(message=str(error))

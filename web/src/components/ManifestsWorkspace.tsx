@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { api, type ManifestSection, type ManifestView, type ObjectSummary } from "../api/client";
+import { api, type FileDraftInfo, type ManifestSection, type ManifestView, type ObjectSummary } from "../api/client";
+import { draftedList } from "../draft";
+import { MANIFEST_INCLUDES, MANIFEST_SECTIONS } from "../platform";
 import { Icon } from "./Icon";
 
 const SECTION_LABELS: Record<string, string> = {
@@ -21,9 +23,15 @@ interface Props {
   onSelect: (path: string) => void;
   onQuery: (query: string) => void;
   onOpenPackage: (name: string) => void;
+  canEdit?: boolean;
+  fileDraft?: (path: string) => FileDraftInfo | undefined;
+  onEdit?: (path: string, base: string, sections: Record<string, string[]>) => void;
 }
 
-export function ManifestsWorkspace({ repoId, generation, selected, query, onSelect, onQuery, onOpenPackage }: Props) {
+/** Changes a manifest's top-level lists; the server works out the smallest edit. */
+type Editor = { file: FileDraftInfo | undefined; set: (field: string, list: string[]) => void };
+
+export function ManifestsWorkspace({ repoId, generation, selected, query, onSelect, onQuery, onOpenPackage, canEdit, fileDraft, onEdit }: Props) {
   const [manifests, setManifests] = useState<ObjectSummary[]>([]);
   const [view, setView] = useState<ManifestView | null>(null);
 
@@ -92,13 +100,37 @@ export function ManifestsWorkspace({ repoId, generation, selected, query, onSele
             </div>
           ))}
         </aside>
-        <article className="manifest-content detail">{view ? <Manifest view={view} onSelect={onSelect} onOpenPackage={onOpenPackage} /> : <p className="sample-note">Select a manifest</p>}</article>
+        <article className="manifest-content detail">{view ? (
+            <Manifest
+              view={view}
+              onSelect={onSelect}
+              onOpenPackage={onOpenPackage}
+              editor={
+                canEdit && onEdit && view.status === "ok"
+                  ? {
+                      file: fileDraft?.(view.path),
+                      set: (field, list) => onEdit(view.path, fileDraft?.(view.path)?.base_revision ?? view.revision, { [field]: list }),
+                    }
+                  : undefined
+              }
+            />
+          ) : <p className="sample-note">Select a manifest</p>}</article>
       </div>
     </section>
   );
 }
 
-function Manifest({ view, onSelect, onOpenPackage }: { view: ManifestView; onSelect: (path: string) => void; onOpenPackage: (name: string) => void }) {
+function Manifest({
+  view,
+  onSelect,
+  onOpenPackage,
+  editor,
+}: {
+  view: ManifestView;
+  onSelect: (path: string) => void;
+  onOpenPackage: (name: string) => void;
+  editor?: Editor;
+}) {
   return (
     <>
       <div className="object-title">
@@ -132,26 +164,33 @@ function Manifest({ view, onSelect, onOpenPackage }: { view: ManifestView; onSel
           </ul>
         </section>
       )}
-      <section className="editor-section">
-        <h3>Catalogs</h3>
-        {view.catalogs.length ? (
-          <ol>
-            {view.catalogs.map((c) => (
-              <li key={c}>{c}</li>
-            ))}
-          </ol>
-        ) : (
-          <p className="muted">None</p>
-        )}
-        <p className="muted">Order is preserved. Earlier catalogs take precedence.</p>
-      </section>
-      <Includes includes={view.includes} onSelect={onSelect} />
-      {view.sections.map((s) => (
-        <Section key={s.field} section={s} onOpenPackage={onOpenPackage} />
-      ))}
+      {editor ? (
+        <EditableLists view={view} editor={editor} onSelect={onSelect} onOpenPackage={onOpenPackage} />
+      ) : (
+        <>
+          <section className="editor-section">
+            <h3>Catalogs</h3>
+            {view.catalogs.length ? (
+              <ol>
+                {view.catalogs.map((c) => (
+                  <li key={c}>{c}</li>
+                ))}
+              </ol>
+            ) : (
+              <p className="muted">None</p>
+            )}
+            <p className="muted">Order is preserved. Earlier catalogs take precedence.</p>
+          </section>
+          <Includes includes={view.includes} onSelect={onSelect} />
+          {view.sections.map((s) => (
+            <Section key={s.field} section={s} onOpenPackage={onOpenPackage} />
+          ))}
+        </>
+      )}
       {view.conditional.length > 0 && (
         <section className="editor-section">
           <h3>Conditional items</h3>
+          {editor && <p className="muted">Conditional items are not edited here yet; saving leaves them as they are.</p>}
           {view.conditional.map((block, i) => (
             <div className="card-fields conditional" key={i}>
               <p className="rule">
@@ -230,6 +269,185 @@ function Section({ section, onOpenPackage }: { section: ManifestSection; onOpenP
           </li>
         ))}
       </ul>
+    </section>
+  );
+}
+
+function EditableLists({
+  view,
+  editor,
+  onSelect,
+  onOpenPackage,
+}: {
+  view: ManifestView;
+  editor: Editor;
+  onSelect: (path: string) => void;
+  onOpenPackage: (name: string) => void;
+}) {
+  const includePaths = new Map(view.includes.map((i) => [i.name, i.path]));
+  const packages = new Map(view.sections.flatMap((s) => s.items.map((i) => [i.name, i.package] as const)));
+  const present = new Set(view.sections.map((s) => s.field));
+  const touched = new Set(
+    (editor.file?.changes ?? []).map((c) => String((c as { path: unknown[] }).path[0])),
+  );
+  const [added, setAdded] = useState<string[]>([]);
+  const shown = MANIFEST_SECTIONS.filter((f) => present.has(f) || touched.has(f) || added.includes(f));
+  const extra = view.sections.map((s) => s.field).filter((f) => !MANIFEST_SECTIONS.includes(f));
+  const [adding, setAdding] = useState("");
+  const original = (field: string) => view.sections.find((s) => s.field === field)?.items.map((i) => i.name) ?? [];
+  const missing = MANIFEST_SECTIONS.filter((f) => !shown.includes(f));
+
+  return (
+    <>
+      <EditList
+        title="Catalogs"
+        items={draftedList(view.catalogs, editor.file, "catalogs")}
+        changed={touched.has("catalogs")}
+        note="Order is preserved. Earlier catalogs take precedence."
+        onChange={(list) => editor.set("catalogs", list)}
+      />
+      <EditList
+        title="Included manifests"
+        items={draftedList(
+          view.includes.map((i) => i.name),
+          editor.file,
+          MANIFEST_INCLUDES,
+        )}
+        changed={touched.has(MANIFEST_INCLUDES)}
+        onChange={(list) => editor.set(MANIFEST_INCLUDES, list)}
+        render={(name) => {
+          const path = includePaths.get(name);
+          return path ? (
+            <button type="button" className="link" onClick={() => onSelect(path)}>
+              {name}
+            </button>
+          ) : (
+            <>
+              <span>{name}</span>
+              {includePaths.has(name) && <small className="condition">Missing</small>}
+            </>
+          );
+        }}
+      />
+      {[...shown, ...extra].map((field) => (
+        <EditList
+          key={field}
+          title={SECTION_LABELS[field] ?? field}
+          items={draftedList(original(field), editor.file, field)}
+          changed={touched.has(field)}
+          onChange={(list) => editor.set(field, list)}
+          render={(name) => {
+            const pkg = packages.get(name);
+            return pkg ? (
+              <button type="button" className="link" onClick={() => onOpenPackage(pkg)}>
+                {name}
+              </button>
+            ) : (
+              <>
+                <span>{name}</span>
+                {packages.has(name) && <small className="condition">No such package</small>}
+              </>
+            );
+          }}
+        />
+      ))}
+      {missing.length > 0 && (
+        <section className="editor-section">
+          <div className="add-row">
+            <select aria-label="Section to add" value={adding} onChange={(e) => setAdding(e.target.value)}>
+              <option value="">Add a section…</option>
+              {missing.map((f) => (
+                <option key={f} value={f}>
+                  {SECTION_LABELS[f] ?? f}
+                </option>
+              ))}
+            </select>
+            <button type="button" disabled={!adding} onClick={() => {
+                setAdded([...added, adding]);
+                setAdding("");
+              }}>
+              Add section
+            </button>
+          </div>
+        </section>
+      )}
+    </>
+  );
+}
+
+/** An ordered list with move, remove and add controls, all reachable by keyboard. */
+function EditList({
+  title,
+  items,
+  changed,
+  note,
+  onChange,
+  render = (name) => <span>{name}</span>,
+}: {
+  title: string;
+  items: string[];
+  changed: boolean;
+  note?: string;
+  onChange: (list: string[]) => void;
+  render?: (name: string) => React.ReactNode;
+}) {
+  const [text, setText] = useState("");
+  const move = (from: number, to: number) => {
+    const next = [...items];
+    const [moved] = next.splice(from, 1);
+    if (moved === undefined) return;
+    next.splice(to, 0, moved);
+    onChange(next);
+  };
+  function add() {
+    const name = text.trim();
+    if (!name) return;
+    onChange([...items, name]);
+    setText("");
+  }
+  return (
+    <section className="editor-section" aria-label={title}>
+      <h3 className="field-label">
+        {title}
+        {changed && <small className="drafted">Edited</small>}
+      </h3>
+      {items.length === 0 && <p className="muted">None</p>}
+      <ul className="manifest-list edit-list">
+        {items.map((name, i) => (
+          <li key={`${name}-${i}`}>
+            {render(name)}
+            <span className="row-actions">
+              <button type="button" aria-label={`Move ${name} up`} disabled={i === 0} onClick={() => move(i, i - 1)}>
+                ↑
+              </button>
+              <button type="button" aria-label={`Move ${name} down`} disabled={i === items.length - 1} onClick={() => move(i, i + 1)}>
+                ↓
+              </button>
+              <button type="button" aria-label={`Remove ${name}`} onClick={() => onChange(items.filter((_, j) => j !== i))}>
+                Remove
+              </button>
+            </span>
+          </li>
+        ))}
+      </ul>
+      <div className="add-row">
+        <input
+          aria-label={`Add to ${title}`}
+          placeholder="Add an item"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              add();
+            }
+          }}
+        />
+        <button type="button" onClick={add} disabled={!text.trim()}>
+          Add
+        </button>
+      </div>
+      {note && <p className="muted">{note}</p>}
     </section>
   );
 }

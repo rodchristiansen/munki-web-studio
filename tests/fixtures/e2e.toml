@@ -7,3 +7,4 @@ rescan_seconds = 2
 id = "fixture"
 name = "Fixture repository"
 path = "../../web/test-results/repo"
+writable = true
