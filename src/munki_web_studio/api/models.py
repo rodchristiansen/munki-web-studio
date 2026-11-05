@@ -30,6 +30,7 @@ class PackageVersion(BaseModel):
     path: str
     catalogs: list[str]
     status: str
+    installer_type: str | None = None
 
 
 class Package(BaseModel):

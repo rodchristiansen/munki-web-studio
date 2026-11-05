@@ -369,6 +369,8 @@ export interface components {
         PackageVersion: {
             /** Catalogs */
             catalogs: string[];
+            /** Installer Type */
+            installer_type?: string | null;
             /** Path */
             path: string;
             /** Status */

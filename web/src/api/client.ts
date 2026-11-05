@@ -4,9 +4,14 @@
 import createClient from "openapi-fetch";
 import type { components, paths } from "./schema";
 
-export const api = createClient<paths>({ baseUrl: "" });
+// fetch is looked up on each call so tests can replace it.
+export const api = createClient<paths>({
+  baseUrl: typeof window === "undefined" ? "" : window.location.origin,
+  fetch: (request) => globalThis.fetch(request),
+});
 
 export type Package = components["schemas"]["Package"];
 export type ObjectSummary = components["schemas"]["ObjectSummary"];
 export type ObjectDetail = components["schemas"]["ObjectDetail"];
 export type RepositoryInfo = components["schemas"]["RepositoryInfo"];
+export type PackageVersion = components["schemas"]["PackageVersion"];
