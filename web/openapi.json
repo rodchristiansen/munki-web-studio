@@ -560,24 +560,6 @@
   },
   "openapi": "3.1.0",
   "paths": {
-    "/": {
-      "get": {
-        "operationId": "missing_workspace__get",
-        "responses": {
-          "200": {
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Missing Workspace"
-      }
-    },
     "/api/health": {
       "get": {
         "operationId": "health_api_health_get",
