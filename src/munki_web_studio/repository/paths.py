@@ -46,8 +46,9 @@ class FileRead:
 
 def _descriptor_path(fd: int) -> Path | None:
     """The real path of an open file, where the platform can tell us."""
-    if fcntl is not None and hasattr(fcntl, "F_GETPATH"):  # macOS
-        buffer = fcntl.fcntl(fd, fcntl.F_GETPATH, b"\0" * 1024)
+    get_path: int | None = getattr(fcntl, "F_GETPATH", None) if fcntl is not None else None
+    if fcntl is not None and get_path is not None:  # macOS
+        buffer = fcntl.fcntl(fd, get_path, b"\0" * 1024)
         return Path(os.fsdecode(buffer.rstrip(b"\0")))
     proc = Path(f"/proc/self/fd/{fd}")
     if proc.exists():  # Linux
