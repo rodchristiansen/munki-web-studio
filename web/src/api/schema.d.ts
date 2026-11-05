@@ -200,6 +200,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/repositories/{repo_id}/changesets/{change_id}/commit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Commit Change Set
+         * @description Commit the files a saved change set wrote, and nothing else. Refused if any
+         *     of them changed again after the save, so the commit is exactly what was
+         *     reviewed. Hooks do not run.
+         */
+        post: operations["commit_change_set_api_repositories__repo_id__changesets__change_id__commit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/repositories/{repo_id}/changesets/{change_id}/files/{path}": {
         parameters: {
             query?: never;
@@ -298,6 +320,46 @@ export interface paths {
         get: operations["explain_conditions_api_repositories__repo_id__conditions__path__get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/repositories/{repo_id}/git": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Git Status
+         * @description Branch, commit and uncommitted paths, or why Git is not used here.
+         */
+        get: operations["git_status_api_repositories__repo_id__git_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/repositories/{repo_id}/git/push": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Push
+         * @description Push the current branch to its upstream. Hooks do not run.
+         */
+        post: operations["push_api_repositories__repo_id__git_push_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -914,6 +976,18 @@ export interface components {
             /** Repo Id */
             repo_id: string;
         };
+        /** CommitInfo */
+        CommitInfo: {
+            /** Commit */
+            commit: string;
+            /** Paths */
+            paths: string[];
+        };
+        /** CommitRequest */
+        CommitRequest: {
+            /** Message */
+            message: string;
+        };
         /** Completion */
         Completion: {
             /** Artifacts */
@@ -1027,6 +1101,31 @@ export interface components {
             changes: {
                 [key: string]: unknown;
             }[];
+        };
+        /** GitInfo */
+        GitInfo: {
+            /** Ahead */
+            ahead: number;
+            /** Behind */
+            behind: number;
+            /** Branch */
+            branch: string | null;
+            /**
+             * Changed
+             * @description Paths with changes Git has not committed
+             */
+            changed: string[];
+            /** Enabled */
+            enabled: boolean;
+            /** Head */
+            head: string | null;
+            /**
+             * Reason
+             * @description Why Git is not used for this repository
+             */
+            reason: string | null;
+            /** Upstream */
+            upstream: string | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -1842,6 +1941,42 @@ export interface operations {
             };
         };
     };
+    commit_change_set_api_repositories__repo_id__changesets__change_id__commit_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                repo_id: string;
+                change_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommitRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitInfo"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     put_file_edits_api_repositories__repo_id__changesets__change_id__files__path__put: {
         parameters: {
             query?: never;
@@ -2008,6 +2143,70 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConditionInfo"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    git_status_api_repositories__repo_id__git_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                repo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GitInfo"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    push_api_repositories__repo_id__git_push_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                repo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
                 };
             };
             /** @description Validation Error */

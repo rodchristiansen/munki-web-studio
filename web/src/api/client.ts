@@ -26,6 +26,7 @@ export type OperationInfo = components["schemas"]["OperationInfo"];
 export type WorkerView = components["schemas"]["WorkerView"];
 export type CatalogSummary = components["schemas"]["CatalogSummary"];
 export type CatalogDetail = components["schemas"]["CatalogDetail"];
+export type GitInfo = components["schemas"]["GitInfo"];
 
 // Changes carry the session's CSRF token; the server refuses them without it.
 let csrfToken = "";

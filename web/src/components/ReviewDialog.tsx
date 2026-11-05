@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import type { Draft } from "../draft";
+import type { Draft, SaveOutcome } from "../draft";
 
 interface Props {
   draft: Draft;
   live: boolean;
   onClose: () => void;
-  onSaved: (files: number) => void;
+  onSaved: (saved: Extract<SaveOutcome, { kind: "saved" }>) => void;
 }
 
 /** Every file the draft changes, with its diff, and the one place a draft is saved.
@@ -33,7 +33,7 @@ export function ReviewDialog({ draft, live, onClose, onSaved }: Props) {
     setMessage(null);
     const outcome = await draft.save(confirmLive);
     setBusy(false);
-    if (outcome.kind === "saved") onSaved(outcome.files);
+    if (outcome.kind === "saved") onSaved(outcome);
     else setMessage(outcome.message);
   }
 

@@ -21,6 +21,17 @@ CREATE TABLE IF NOT EXISTS change_sets (
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS saved_files (
+    change_set TEXT NOT NULL REFERENCES change_sets(id),
+    path TEXT NOT NULL,
+    revision TEXT NOT NULL,
+    PRIMARY KEY (change_set, path)
+);
+CREATE TABLE IF NOT EXISTS commits (
+    change_set TEXT PRIMARY KEY REFERENCES change_sets(id),
+    commit_id TEXT NOT NULL,
+    committed_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS file_drafts (
     change_set TEXT NOT NULL REFERENCES change_sets(id),
     path TEXT NOT NULL,
@@ -136,3 +147,30 @@ class ChangeSetStore:
                 "UPDATE change_sets SET status = ?, updated_at = ? WHERE id = ?",
                 (status, _now(), change_id),
             )
+
+    def record_saved(self, change_id: str, revisions: dict[str, str]) -> None:
+        """The revision each file had right after this change set was saved."""
+        with self._lock, self._db:
+            self._db.executemany(
+                "INSERT OR REPLACE INTO saved_files VALUES (?, ?, ?)",
+                [(change_id, path, rev) for path, rev in revisions.items()],
+            )
+
+    def saved_revisions(self, change_id: str) -> dict[str, str]:
+        with self._lock:
+            rows = self._db.execute(
+                "SELECT path, revision FROM saved_files WHERE change_set = ? ORDER BY path",
+                (change_id,),
+            ).fetchall()
+        return {r["path"]: r["revision"] for r in rows}
+
+    def record_commit(self, change_id: str, commit_id: str) -> None:
+        with self._lock, self._db:
+            self._db.execute("INSERT INTO commits VALUES (?, ?, ?)", (change_id, commit_id, _now()))
+
+    def commit_of(self, change_id: str) -> str | None:
+        with self._lock:
+            row = self._db.execute(
+                "SELECT commit_id FROM commits WHERE change_set = ?", (change_id,)
+            ).fetchone()
+        return row["commit_id"] if row else None

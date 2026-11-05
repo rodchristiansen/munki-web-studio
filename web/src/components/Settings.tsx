@@ -1,16 +1,27 @@
 import { useEffect, useState } from "react";
-import { api, type OperationInfo, type RepositoryInfo, type WorkerView } from "../api/client";
+import { api, type GitInfo, type OperationInfo, type RepositoryInfo, type WorkerView } from "../api/client";
 
 const REFRESH_MS = 10_000;
 
 interface Props {
   repo: RepositoryInfo | undefined;
+  git?: GitInfo | null;
+  canPush?: boolean;
+  onPushed?: () => void;
 }
 
 /** What this studio is connected to: its repository, its workers and the tools
  * they report, and which jobs can run because of them. Settings come from the
  * config file, so this view shows them rather than editing them. */
-export function Settings({ repo }: Props) {
+export function Settings({ repo, git, canPush, onPushed }: Props) {
+  const [pushState, setPushState] = useState<string | null>(null);
+  async function push() {
+    if (!repo) return;
+    setPushState("Pushing…");
+    const { data, error } = await api.POST("/api/repositories/{repo_id}/git/push", { params: { path: { repo_id: repo.id } } });
+    setPushState(data ? (data.message ?? "Pushed") : String((error as { detail?: unknown } | undefined)?.detail ?? "Push failed"));
+    onPushed?.();
+  }
   const [workers, setWorkers] = useState<WorkerView[]>([]);
   const [operations, setOperations] = useState<OperationInfo[]>([]);
 
@@ -46,6 +57,36 @@ export function Settings({ repo }: Props) {
             </dl>
           ))}
           <p className="muted">These come from the studio's config file.</p>
+        </div>
+      </section>
+      <section className="editor-section" aria-label="Git">
+        <h3>Git</h3>
+        <div className="card-fields">
+          {!git || !git.enabled ? (
+            <p className="muted">{git?.reason === "not a Git repository" ? "This repository is not a Git working tree. Saving works the same without it." : `Git is off: ${git?.reason ?? "checking…"}`}</p>
+          ) : (
+            <>
+              {[
+                ["Branch", git.branch ?? "Detached"],
+                ["Commit", git.head ? git.head.slice(0, 12) : "No commits yet"],
+                ["Upstream", git.upstream ? `${git.upstream} · ${git.ahead} ahead, ${git.behind} behind` : "None"],
+                ["Uncommitted", git.changed.length ? `${git.changed.length} files` : "None"],
+              ].map(([k, v]) => (
+                <dl className="sample-value" key={k}>
+                  <dt>{k}</dt>
+                  <dd>{v}</dd>
+                </dl>
+              ))}
+              {canPush && (
+                <div className="review-actions">
+                  <button type="button" disabled={!git.upstream || git.ahead === 0 || pushState === "Pushing…"} onClick={() => void push()}>
+                    Push {git.ahead ? `${git.ahead} ${git.ahead === 1 ? "commit" : "commits"}` : ""}
+                  </button>
+                </div>
+              )}
+              {pushState && <p role="status">{pushState}</p>}
+            </>
+          )}
         </div>
       </section>
       <section className="editor-section">
