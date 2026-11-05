@@ -16,6 +16,7 @@ from munki_web_studio.mcp import create_mcp
 from munki_web_studio.repository.config import Settings, load_settings
 from munki_web_studio.repository.index import Index
 from munki_web_studio.repository.scanner import scan
+from munki_web_studio.services import Services
 from munki_web_studio.studio import STUDIO, __version__
 
 # The built browser workspace. `pnpm build` in web/ writes here.
@@ -38,13 +39,15 @@ def settings_from_environment() -> Settings:
 
 def create_app(settings: Settings | None = None, static_dir: Path = STATIC_DIR) -> FastAPI:
     settings = settings if settings is not None else settings_from_environment()
-    mcp_app = create_mcp().http_app(path="/")
+    services = Services(settings)
+    mcp_app = create_mcp(services).http_app(path="/")
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         index = Index(settings.state_dir / "index.sqlite")
         app.state.settings = settings
         app.state.index = index
+        services.index = index
         for repo in settings.repositories:
             scan(repo, index)
         async with mcp_app.lifespan(app):

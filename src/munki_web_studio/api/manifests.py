@@ -18,6 +18,8 @@ from munki_web_studio.api.models import (
 from munki_web_studio.api.read import _index, _repo  # pyright: ignore[reportPrivateUsage]
 from munki_web_studio.codec import ParseError, load
 from munki_web_studio.codec.model import MAX_FILE_BYTES
+from munki_web_studio.repository.config import Repository
+from munki_web_studio.repository.index import Index
 from munki_web_studio.repository.paths import PathEscapeError, normalize, read_contained
 from munki_web_studio.repository.references import Graph, graph_for, manifest_name, validate
 
@@ -52,17 +54,11 @@ def _layout(
     return includes, sections
 
 
-@router.get("/{repo_id}/manifests/{path:path}")
-def get_manifest(request: Request, repo_id: str, path: str) -> ManifestView:
-    repo = _repo(request, repo_id)
-    try:
-        relative = normalize(path)
-    except PathEscapeError:
-        raise HTTPException(400, "Invalid path") from None
-    index = _index(request)
+def build_manifest_view(index: Index, repo: Repository, relative: str) -> ManifestView | None:
+    """One manifest laid out for reading, or None when there is no manifest there."""
     obj = index.get(repo.id, relative)
     if obj is None or obj.kind != "manifest":
-        raise HTTPException(404, f"No manifest at {relative!r}")
+        return None
     graph = graph_for(index, repo)
     name = manifest_name(relative)
     view = ManifestView(
@@ -108,4 +104,17 @@ def get_manifest(request: Request, repo_id: str, path: str) -> ManifestView:
                 sections=sections,
             )
         )
+    return view
+
+
+@router.get("/{repo_id}/manifests/{path:path}")
+def get_manifest(request: Request, repo_id: str, path: str) -> ManifestView:
+    repo = _repo(request, repo_id)
+    try:
+        relative = normalize(path)
+    except PathEscapeError:
+        raise HTTPException(400, "Invalid path") from None
+    view = build_manifest_view(_index(request), repo, relative)
+    if view is None:
+        raise HTTPException(404, f"No manifest at {relative!r}")
     return view
