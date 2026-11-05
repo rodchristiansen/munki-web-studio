@@ -118,6 +118,68 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/repositories/{repo_id}/changesets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Change Sets
+         * @description Your open change sets; Administrators see everyone's.
+         */
+        get: operations["list_change_sets_api_repositories__repo_id__changesets_get"];
+        put?: never;
+        /** Create Change Set */
+        post: operations["create_change_set_api_repositories__repo_id__changesets_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/repositories/{repo_id}/changesets/{change_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Change Set
+         * @description A change set with each file's diff and whether it still applies.
+         */
+        get: operations["get_change_set_api_repositories__repo_id__changesets__change_id__get"];
+        put?: never;
+        post?: never;
+        /** Discard Change Set */
+        delete: operations["discard_change_set_api_repositories__repo_id__changesets__change_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/repositories/{repo_id}/changesets/{change_id}/files/{path}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Put File Edits
+         * @description Replace one file's edits in a draft.
+         */
+        put: operations["put_file_edits_api_repositories__repo_id__changesets__change_id__files__path__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/repositories/{repo_id}/conditions/{path}": {
         parameters: {
             query?: never;
@@ -386,6 +448,27 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** ChangeSetInfo */
+        ChangeSetInfo: {
+            /** Created At */
+            created_at: string;
+            /** Files */
+            files: components["schemas"]["FileDraftInfo"][];
+            /** Id */
+            id: string;
+            /** Owner */
+            owner: string;
+            /** Owner Name */
+            owner_name: string;
+            /** Repo Id */
+            repo_id: string;
+            /** Status */
+            status: string;
+            /** Title */
+            title: string;
+            /** Updated At */
+            updated_at: string;
+        };
         /** ConditionInfo */
         ConditionInfo: {
             /** Column */
@@ -420,6 +503,42 @@ export interface components {
             line?: number | null;
             /** Message */
             message: string;
+        };
+        /** FileDraftInfo */
+        FileDraftInfo: {
+            /** Base Revision */
+            base_revision: string;
+            /** Changes */
+            changes: {
+                [key: string]: unknown;
+            }[];
+            /** Conflict */
+            conflict: boolean;
+            /** Current Revision */
+            current_revision: string | null;
+            /** Diff */
+            diff: string;
+            /** Error */
+            error: string | null;
+            /** Path */
+            path: string;
+            /** Surgical */
+            surgical: boolean;
+        };
+        /** FileEdit */
+        FileEdit: {
+            /**
+             * Base Revision
+             * @description Revision of the file the edits were made on
+             */
+            base_revision: string;
+            /**
+             * Changes
+             * @description Edits: {op: set|append|delete, path: [...], value: tagged JSON}; an empty list removes the file from the draft
+             */
+            changes: {
+                [key: string]: unknown;
+            }[];
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -483,6 +602,14 @@ export interface components {
             sections: components["schemas"]["ManifestSection"][];
             /** Status */
             status: string;
+        };
+        /** NewChangeSet */
+        NewChangeSet: {
+            /**
+             * Title
+             * @default Untitled change
+             */
+            title: string;
         };
         /** ObjectDetail */
         ObjectDetail: {
@@ -871,6 +998,173 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ObjectPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_change_sets_api_repositories__repo_id__changesets_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                repo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangeSetInfo"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_change_set_api_repositories__repo_id__changesets_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                repo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewChangeSet"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangeSetInfo"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_change_set_api_repositories__repo_id__changesets__change_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                repo_id: string;
+                change_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangeSetInfo"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    discard_change_set_api_repositories__repo_id__changesets__change_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                repo_id: string;
+                change_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangeSetInfo"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_file_edits_api_repositories__repo_id__changesets__change_id__files__path__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                repo_id: string;
+                change_id: string;
+                path: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FileEdit"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangeSetInfo"];
                 };
             };
             /** @description Validation Error */
