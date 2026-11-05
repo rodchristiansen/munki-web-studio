@@ -23,9 +23,7 @@ pkginfo = {
     "installer_item_size": 184320,
     "installed_size": 9007199254740993,
     "installer_type": "copy_from_dmg",
-    "items_to_copy": [
-        {"source_item": "Example Editor.app", "destination_path": "/Applications"}
-    ],
+    "items_to_copy": [{"source_item": "Example Editor.app", "destination_path": "/Applications"}],
     "minimum_os_version": "13.0",
     "unattended_install": True,
     "uninstallable": False,
@@ -54,6 +52,4 @@ manifest = {
         }
     ],
 }
-(here / "manifest-plistlib.plist").write_bytes(
-    plistlib.dumps(manifest, sort_keys=False)
-)
+(here / "manifest-plistlib.plist").write_bytes(plistlib.dumps(manifest, sort_keys=False))
