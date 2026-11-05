@@ -67,7 +67,7 @@ def create_app(settings: Settings | None = None, static_dir: Path = STATIC_DIR) 
         app.mount("/", StaticFiles(directory=static_dir, html=True), name="workspace")
     else:
 
-        @app.get("/", response_class=PlainTextResponse)
+        @app.get("/", response_class=PlainTextResponse, include_in_schema=False)
         def missing_workspace() -> str:  # pyright: ignore[reportUnusedFunction]
             return f"{STUDIO.name} API is running. Build the workspace with `pnpm build` in web/."
 
