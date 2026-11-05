@@ -41,6 +41,7 @@ jobs:
       - run: uv sync --locked
         working-directory: .
       - run: pnpm install --frozen-lockfile
+      - run: pnpm gen:api && git diff --exit-code src/api/schema.d.ts
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build

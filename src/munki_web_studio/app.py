@@ -1,5 +1,8 @@
 """The FastAPI application."""
 
+import os
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -7,7 +10,11 @@ from fastapi.responses import PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from munki_web_studio.api import read
 from munki_web_studio.mcp import create_mcp
+from munki_web_studio.repository.config import Settings, load_settings
+from munki_web_studio.repository.index import Index
+from munki_web_studio.repository.scanner import scan
 from munki_web_studio.studio import STUDIO, __version__
 
 # The built browser workspace. `pnpm build` in web/ writes here.
@@ -20,14 +27,36 @@ class Health(BaseModel):
     version: str
 
 
-def create_app(static_dir: Path = STATIC_DIR) -> FastAPI:
+def settings_from_environment() -> Settings:
+    """Settings from the config file named by the studio's environment variable."""
+    config = os.environ.get(STUDIO.config_env)
+    if config:
+        return load_settings(Path(config))
+    return Settings(repositories=(), state_dir=Path(".state").resolve())
+
+
+def create_app(settings: Settings | None = None, static_dir: Path = STATIC_DIR) -> FastAPI:
+    settings = settings if settings is not None else settings_from_environment()
     mcp_app = create_mcp().http_app(path="/")
-    app = FastAPI(title=STUDIO.name, version=__version__, lifespan=mcp_app.lifespan)
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
+        index = Index(settings.state_dir / "index.sqlite")
+        app.state.settings = settings
+        app.state.index = index
+        for repo in settings.repositories:
+            scan(repo, index)
+        async with mcp_app.lifespan(app):
+            yield
+        index.close()
+
+    app = FastAPI(title=STUDIO.name, version=__version__, lifespan=lifespan)
 
     @app.get("/api/health")
     def health() -> Health:  # pyright: ignore[reportUnusedFunction]
         return Health(status="ok", name=STUDIO.name, version=__version__)
 
+    app.include_router(read.router)
     app.mount("/mcp", mcp_app)
 
     if (static_dir / "index.html").is_file():

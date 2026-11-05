@@ -83,5 +83,14 @@ server:
 pnpm typecheck && pnpm test && pnpm e2e
 ```
 
+The browser talks to the API through a client generated from `web/openapi.json`.
+After changing an API route or model, regenerate both from the repository root:
+
+```sh
+uv run mwsctl openapi --output web/openapi.json && (cd web && pnpm gen:api)
+```
+
+CI fails when either file is out of date.
+
 For live reloading, run `uv run mwsctl serve` and `pnpm dev` side by side; the
 Vite dev server forwards `/api` and `/mcp` to the API.
