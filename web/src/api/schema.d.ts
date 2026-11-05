@@ -78,6 +78,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/repositories/{repo_id}/conditions/{path}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Explain Conditions
+         * @description Every condition in one manifest, as a readable rule or a located error.
+         */
+        get: operations["explain_conditions_api_repositories__repo_id__conditions__path__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/repositories/{repo_id}/objects": {
         parameters: {
             query?: never;
@@ -205,6 +225,24 @@ export interface components {
             items: number;
             /** Name */
             name: string;
+        };
+        /** ConditionInfo */
+        ConditionInfo: {
+            /** Column */
+            column: number | null;
+            /** Error */
+            error: string | null;
+            /** Facts */
+            facts: string[];
+            /**
+             * Rule
+             * @description The condition as a readable sentence; null when it does not parse
+             */
+            rule: string | null;
+            /** Text */
+            text: string;
+            /** Unknown Facts */
+            unknown_facts: string[];
         };
         /** Diagnostic */
         Diagnostic: {
@@ -513,6 +551,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ObjectPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    explain_conditions_api_repositories__repo_id__conditions__path__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                repo_id: string;
+                path: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConditionInfo"][];
                 };
             };
             /** @description Validation Error */

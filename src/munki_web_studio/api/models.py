@@ -98,3 +98,14 @@ class ValidationReport(BaseModel):
     errors: int
     warnings: int
     issues: list[ValidationIssue]
+
+
+class ConditionInfo(BaseModel):
+    text: str
+    rule: str | None = Field(
+        description="The condition as a readable sentence; null when it does not parse"
+    )
+    error: str | None
+    column: int | None
+    facts: list[str]
+    unknown_facts: list[str]

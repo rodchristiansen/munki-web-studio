@@ -19,6 +19,72 @@
         "title": "CatalogSummary",
         "type": "object"
       },
+      "ConditionInfo": {
+        "properties": {
+          "column": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Column"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "facts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Facts",
+            "type": "array"
+          },
+          "rule": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The condition as a readable sentence; null when it does not parse",
+            "title": "Rule"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "unknown_facts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Unknown Facts",
+            "type": "array"
+          }
+        },
+        "required": [
+          "text",
+          "rule",
+          "error",
+          "column",
+          "facts",
+          "unknown_facts"
+        ],
+        "title": "ConditionInfo",
+        "type": "object"
+      },
       "Diagnostic": {
         "properties": {
           "column": {
@@ -833,6 +899,62 @@
           }
         },
         "summary": "Get Catalog",
+        "tags": [
+          "repositories"
+        ]
+      }
+    },
+    "/api/repositories/{repo_id}/conditions/{path}": {
+      "get": {
+        "description": "Every condition in one manifest, as a readable rule or a located error.",
+        "operationId": "explain_conditions_api_repositories__repo_id__conditions__path__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repo_id",
+            "required": true,
+            "schema": {
+              "title": "Repo Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ConditionInfo"
+                  },
+                  "title": "Response Explain Conditions Api Repositories  Repo Id  Conditions  Path  Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Explain Conditions",
         "tags": [
           "repositories"
         ]

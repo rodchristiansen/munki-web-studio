@@ -94,3 +94,35 @@ def test_payload_paths_cannot_escape(scanned: tuple[Repository, Index], tmp_path
     assert ("pkgsinfo/tools/Escape-1.0.plist", "pkgs/../../secret") in codes(
         validate(index, repo), "missing-payload"
     )
+
+
+def test_every_fixture_condition_reads_as_a_rule(scanned: tuple[Repository, Index]) -> None:
+    from munki_web_studio import conditions
+    from munki_web_studio.repository.references import object_conditions
+
+    repo, index = scanned
+    graph = graph_for(index, repo)
+    texts = [
+        t for obj in graph.objects if obj.status == "ok" for t in object_conditions(graph, obj)
+    ]
+    assert texts
+    assert all(conditions.analyze(t).rule for t in texts)
+    assert not codes(validate(index, repo), "condition-syntax")
+
+
+def test_broken_and_custom_conditions_are_reported(scanned: tuple[Repository, Index]) -> None:
+    import plistlib
+
+    repo, index = scanned
+    manifest = {
+        "catalogs": ["testing"],
+        "conditional_items": [
+            {"condition": "arch == ", "managed_installs": ["ExampleEditor"]},
+            {"condition": 'site_room == "201"', "managed_installs": ["ExampleViewer"]},
+        ],
+    }
+    (repo.root / "manifests/groups/conditions").write_bytes(plistlib.dumps(manifest))
+    scan(repo, index)
+    issues = validate(index, repo)
+    assert ("manifests/groups/conditions", "arch == ") in codes(issues, "condition-syntax")
+    assert ("manifests/groups/conditions", "site_room") in codes(issues, "unknown-fact")
