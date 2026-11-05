@@ -48,9 +48,12 @@ deployment does:
 - The container runs as UID 10001 with a read-only root filesystem, all
   capabilities dropped, and no privilege escalation.
 
-To serve other machines, put a TLS reverse proxy in front, add the host name
-to `allowed_hosts`, and set up sign-in (`[auth]`) in `studio.toml`. The studio
-refuses other host names until sign-in is configured.
+To serve other machines, set up sign-in (`[auth]`) in `studio.toml`, add the
+host name to `allowed_hosts`, remove `MUNKI_WEB_STUDIO_ALLOW_UNAUTHENTICATED`
+from `compose.yaml`, and put a TLS reverse proxy in front. Without sign-in the
+studio refuses to start on a non-loopback address unless that variable is set,
+so `docker run -p 3186:3186` with the image alone does not expose an open
+studio.
 
 To upgrade, change `STUDIO_IMAGE` to the new release's digest and run
 `docker compose up -d --wait` again.

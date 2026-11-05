@@ -9,6 +9,12 @@ services:
     ports:
       # Bound to loopback: put a TLS reverse proxy in front for other machines.
       - "127.0.0.1:3186:3186"
+    environment:
+      # Lets the studio listen inside the container without sign-in. This is safe
+      # only because the port above is bound to 127.0.0.1. Remove this line once
+      # [auth] is set up in studio.toml, and never publish the port more widely
+      # while it is here.
+      MUNKI_WEB_STUDIO_ALLOW_UNAUTHENTICATED: "1"
     volumes:
       - ./studio.toml:/etc/studio/studio.toml:ro
       # The Munki repository, read-only. Use :rw only for an authoring copy the

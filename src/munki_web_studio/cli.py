@@ -26,6 +26,9 @@ def root(
     """Work with a repository from the terminal."""
 
 
+UNAUTHENTICATED_ENV = f"{STUDIO.config_env.removesuffix('_CONFIG')}_ALLOW_UNAUTHENTICATED"
+
+
 @cli.command()
 def serve(
     host: Annotated[str, typer.Option(help="Address to bind.")] = "127.0.0.1",
@@ -35,13 +38,35 @@ def serve(
         typer.Option(help=f"Repository config file. Defaults to ${STUDIO.config_env}."),
     ] = None,
 ) -> None:
-    """Run the web app, API, and MCP server."""
+    """Run the web app, API, and MCP server.
+
+    Without sign-in configured, the studio only listens on this machine. To bind
+    another address without sign-in, which a container must do, set
+    MUNKI_WEB_STUDIO_ALLOW_UNAUTHENTICATED=1 and publish the port on loopback
+    only, as deploy/compose.yaml does.
+    """
+    import ipaddress
+    import os
+
     import uvicorn
 
-    from munki_web_studio.app import create_app
+    from munki_web_studio.app import create_app, settings_from_environment
     from munki_web_studio.repository.config import load_settings
 
-    settings = load_settings(config) if config else None
+    settings = load_settings(config) if config else settings_from_environment()
+    try:
+        loopback = host == "localhost" or ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        loopback = False
+    allowed = os.environ.get(UNAUTHENTICATED_ENV) == "1"
+    if not loopback and not settings.auth.enabled and not allowed:
+        typer.echo(
+            f"Refusing to listen on {host} without sign-in: anyone who can reach it could edit "
+            f'the repository. Configure [auth] mode = "oidc", or set {UNAUTHENTICATED_ENV}=1 '
+            "and publish the port on loopback only.",
+            err=True,
+        )
+        raise typer.Exit(2)
     uvicorn.run(create_app(settings), host=host, port=port)
 
 
