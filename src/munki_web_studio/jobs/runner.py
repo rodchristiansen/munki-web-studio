@@ -223,9 +223,11 @@ class Runner:
             outcome = ("cancelled", None, False)
         except JobFailedError as failure:
             outcome = ("failed", str(failure), failure.retryable)
-        except Exception as failure:
+        except Exception:
             logger.exception("Job %s (%s) failed", job.id, job.operation)
-            outcome = ("failed", f"{type(failure).__name__}: {failure}", False)
+            # The details stay in the server log; they can name server paths.
+            message = f"The job failed unexpectedly; see the server log for job {job.id}"
+            outcome = ("failed", message, False)
         finally:
             done.set()
             pulse.join()

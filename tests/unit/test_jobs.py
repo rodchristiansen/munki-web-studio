@@ -345,3 +345,33 @@ def test_runner_drops_the_outcome_of_a_lost_attempt(tmp_path: Path) -> None:
     assert store.complete(job.id, "w2", "fresh").result == "fresh"
     store.close()
     index.close()
+
+
+def test_unexpected_errors_do_not_reach_the_job_record(tmp_path: Path) -> None:
+    store = JobStore(tmp_path / "jobs.sqlite")
+    settings = _settings(tmp_path)
+
+    def broken(ctx: JobContext) -> None:
+        raise OSError("/srv/secret/path is unreadable")
+
+    from munki_web_studio.repository.index import Index
+
+    index = Index(tmp_path / "index.sqlite")
+    runner = Runner(store, settings, index, operations={"op": Operation("op", "Op", broken)})
+    job, _ = store.submit(
+        repo_id="fixture",
+        operation="op",
+        arguments={},
+        input_revision="rev",
+        requirements=["portable"],
+        created_by="u",
+        created_by_name="U",
+    )
+    assert runner.run_once("w")
+    failed = store.get(job.id)
+    assert failed is not None and failed.status == "failed"
+    assert failed.error is not None and "/srv/secret" not in failed.error
+    assert job.id in failed.error
+    assert all("/srv/secret" not in e.message for e in store.events(job.id))
+    store.close()
+    index.close()
