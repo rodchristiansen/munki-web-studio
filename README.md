@@ -131,6 +131,25 @@ SHA-256 hashes, and the studio checks every hash before it records a result.
 Settings shows each worker, its tools and what it can run; when no worker can
 run a job, Activity says which tool is needed.
 
+### Importing packages
+
+Import a package (Packages, for Editors) uploads an installer in 8 MB chunks
+into the studio's private staging folder, outside the repository. A dropped
+connection resumes from the last byte that arrived, and the whole file must
+match the SHA-256 the browser computed before it is used. The browser takes
+files up to 2 GB. The worker then runs `makepkginfo` on its own copy, which it
+checks against the same hash. makepkginfo reads the package and installs
+nothing. The studio accepts the resulting pkginfo only if its
+`installer_item_hash` is the upload's hash. It sets `installer_item_location`,
+and opens a draft that adds both the pkginfo (`pkgsinfo/<folder>/<name>-<version>.plist`)
+and the installer (`pkgs/<folder>/<file>`). Nothing reaches the repository
+until that draft is reviewed and saved. The save copies the installer from
+staging, checks its hash again, and writes it with the pkginfo in the same
+journalled save, so a crash leaves both or neither. Existing files are never
+overwritten. A pkginfo name that is taken gets a `__1` suffix, as `munkiimport`
+does, and an installer whose path is taken is refused. `munkiimport` itself is
+not used, because it is interactive and writes to the repository directly.
+
 ### Catalogs
 
 Catalogs shows what each catalog holds and where it has fallen behind the

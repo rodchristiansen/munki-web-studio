@@ -15,11 +15,13 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from munki_web_studio.api.read import _repo  # pyright: ignore[reportPrivateUsage]
+from munki_web_studio.api.uploads import owned as owned_upload
 from munki_web_studio.auth.model import Role
 from munki_web_studio.auth.routes import require
 from munki_web_studio.auth.sessions import Session
 from munki_web_studio.jobs.runner import Runner, explain_missing, repository_revision
 from munki_web_studio.jobs.store import Job, JobEvent, JobStore
+from munki_web_studio.repository.paths import PathEscapeError, normalize
 
 router = APIRouter(tags=["jobs"])
 Viewer = Annotated[Session, Depends(require(Role.VIEWER))]
@@ -166,6 +168,22 @@ def submit_job(
     unknown = sorted(set(body.arguments) - allowed)
     if unknown:
         raise HTTPException(400, f"{op.title} does not take {', '.join(unknown)}")
+    if op.remote and op.remote.upload_argument:
+        upload_id = body.arguments.get(op.remote.upload_argument)
+        if not isinstance(upload_id, str):
+            raise HTTPException(400, f"{op.title} needs an upload")
+        upload = owned_upload(request, session, repo.id, upload_id)
+        if not upload.complete:
+            raise HTTPException(409, "The upload has not finished")
+        folder = body.arguments.get("subdirectory", "")
+        if not isinstance(folder, str):
+            raise HTTPException(400, "subdirectory must be text")
+        if folder:
+            try:
+                if normalize(folder) != folder or folder.startswith(("pkgs/", "pkgsinfo/")):
+                    raise PathEscapeError(folder)
+            except PathEscapeError:
+                raise HTTPException(400, "subdirectory must be a plain relative folder") from None
     if op.remote and op.remote.applies_to:
         if not repo.writable:
             raise HTTPException(403, "This repository is read-only in the studio's configuration")

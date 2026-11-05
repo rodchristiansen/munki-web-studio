@@ -16,15 +16,17 @@ import base64
 import contextlib
 import datetime as dt
 import difflib
+import hashlib
 import json
 import os
 import secrets
 import threading
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from munki_web_studio import platform
 from munki_web_studio.changes.model import ChangeSet
 from munki_web_studio.codec import CodecError, Format, ParseError, edit, load, revision_of
 from munki_web_studio.codec.model import MAX_FILE_BYTES
@@ -49,6 +51,12 @@ class ConflictError(SaveError):
 
 class RecoveryNeededError(SaveError):
     pass
+
+
+# The base revision of a file a draft creates: it must not exist yet.
+NEW = ""
+
+PayloadSource = Callable[[str], Path]
 
 
 @dataclass
@@ -108,7 +116,36 @@ def preview(repo: Repository, change_set: ChangeSet) -> list[FilePreview]:
         except (PathEscapeError, ParseError, CodecError, OSError) as error:
             result.error = str(error)
         results.append(result)
+    for new in change_set.new_files:
+        result = FilePreview(new.path, NEW, None)
+        try:
+            target = contained(repo.root, new.path)
+            if target.exists() or target.is_symlink():
+                result.conflict = True
+                result.error = "A file already exists at this path"
+            else:
+                raw = platform.dump_new_pkginfo(new.data)
+                result.new_raw = raw
+                result.surgical = False
+                result.diff = _diff(new.path, b"", raw, load(raw).format)
+        except (PathEscapeError, ParseError, CodecError, OSError, TypeError) as error:
+            result.error = str(error)
+        results.append(result)
     return results
+
+
+def payload_conflicts(repo: Repository, change_set: ChangeSet) -> list[str]:
+    """Payload paths that something already occupies."""
+    found: list[str] = []
+    for payload in change_set.payloads:
+        try:
+            target = contained(repo.root, payload.path)
+        except PathEscapeError:
+            found.append(payload.path)
+            continue
+        if target.exists() or target.is_symlink():
+            found.append(payload.path)
+    return found
 
 
 # One writer per repository in this process; a file lock covers other processes.
@@ -148,6 +185,30 @@ def _write_new(path: Path, data: bytes) -> None:
         os.fsync(handle.fileno())
 
 
+def _sha256_of(path: Path) -> str | None:
+    if not path.is_file() or path.is_symlink():
+        return None
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def _copy_verified(source: Path, temp: Path, sha256: str) -> None:
+    """Copy an upload beside its target and check it arrived intact."""
+    digest = hashlib.sha256()
+    with source.open("rb") as reader, temp.open("xb") as writer:
+        for block in iter(lambda: reader.read(1 << 20), b""):
+            digest.update(block)
+            writer.write(block)
+        writer.flush()
+        os.fsync(writer.fileno())
+    if digest.hexdigest() != sha256:
+        temp.unlink(missing_ok=True)
+        raise SaveError(f"{source.name} does not match its SHA-256 any more")
+
+
 def _current_revision(repo: Repository, relative: str) -> str | None:
     try:
         read = read_contained(repo.root, relative, MAX_FILE_BYTES)
@@ -165,10 +226,13 @@ def commit(
     change_set: ChangeSet,
     journal_dir: Path,
     *,
+    payload_source: PayloadSource | None = None,
     crash_after: int | None = None,
 ) -> list[FilePreview]:
-    """Save every file in the change set, or none of them. `crash_after` stops
-    after that many renames, for tests of recovery."""
+    """Save every file in the change set, or none of them. Payloads are copied in
+    from `payload_source(upload_id)` and renamed into place before the metadata
+    that refers to them. `crash_after` stops after that many renames, for tests
+    of recovery."""
     with writer_lock(repo, journal_dir):
         if journals(repo, journal_dir):
             raise RecoveryNeededError(
@@ -181,9 +245,36 @@ def commit(
         failed = [f"{p.path}: {p.error}" for p in previews if p.error]
         if failed:
             raise SaveError("; ".join(failed))
+        occupied = payload_conflicts(repo, change_set)
+        if occupied:
+            raise ConflictError(occupied)
+        if change_set.payloads and payload_source is None:
+            raise SaveError("This draft adds installer files, but no upload store is available")
         changed = [(p, p.new_raw) for p in previews if p.new_raw is not None]
         save_id = secrets.token_hex(6)
         entries: list[dict[str, Any]] = []
+        payload_temps: list[tuple[Path, Path]] = []
+        try:
+            for payload in change_set.payloads:
+                assert payload_source is not None  # noqa: S101 - checked above
+                target = contained(repo.root, payload.path)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                temp = target.with_name(f".{target.name}.studio-{save_id}.tmp")
+                _copy_verified(payload_source(payload.upload_id), temp, payload.sha256)
+                payload_temps.append((temp, target))
+                entries.append(
+                    {
+                        "path": payload.path,
+                        "temp": temp.name,
+                        "base_revision": None,
+                        "new_revision": None,
+                        "payload_sha256": payload.sha256,
+                    }
+                )
+        except BaseException:
+            for temp, _ in payload_temps:
+                temp.unlink(missing_ok=True)
+            raise
         for p, new_raw in changed:
             target = contained(repo.root, p.path)
             temp = target.with_name(f".{target.name}.studio-{save_id}.tmp")
@@ -191,7 +282,7 @@ def commit(
                 {
                     "path": p.path,
                     "temp": temp.name,
-                    "base_revision": p.base_revision,
+                    "base_revision": None if p.base_revision == NEW else p.base_revision,
                     "new_revision": revision_of(new_raw),
                     "data": base64.b64encode(new_raw).decode("ascii"),
                 }
@@ -205,18 +296,20 @@ def commit(
         }
         _write_new(journal, json.dumps(record).encode())
         _fsync_dir(journal_dir)
-        temps: list[tuple[Path, Path]] = []
+        temps: list[tuple[Path, Path]] = list(payload_temps)
+        metadata = [e for e in entries if "payload_sha256" not in e]
         try:
-            for entry, (_, new_raw) in zip(entries, changed, strict=True):
+            for entry, (_, new_raw) in zip(metadata, changed, strict=True):
                 target = contained(repo.root, entry["path"])
                 temp = target.with_name(entry["temp"])
                 _write_new(temp, new_raw)
                 temps.append((temp, target))
             moved = [
                 e["path"]
-                for e in entries
+                for e in metadata
                 if _current_revision(repo, e["path"]) != e["base_revision"]
             ]
+            moved += payload_conflicts(repo, change_set)
             if moved:
                 raise ConflictError(moved)
         except BaseException:
@@ -245,6 +338,17 @@ def recover(repo: Repository, journal_dir: Path) -> list[RecoveryReport]:
             for entry in record["files"]:
                 target = contained(repo.root, entry["path"])
                 temp = target.with_name(entry["temp"])
+                if "payload_sha256" in entry:
+                    if _sha256_of(target) == entry["payload_sha256"]:
+                        finished.append(entry["path"])
+                        temp.unlink(missing_ok=True)
+                    elif not target.exists() and _sha256_of(temp) == entry["payload_sha256"]:
+                        os.replace(temp, target)
+                        _fsync_dir(target.parent)
+                        finished.append(entry["path"])
+                    else:
+                        conflicts.append(entry["path"])
+                    continue
                 current = _current_revision(repo, entry["path"])
                 if current == entry["new_revision"]:
                     finished.append(entry["path"])

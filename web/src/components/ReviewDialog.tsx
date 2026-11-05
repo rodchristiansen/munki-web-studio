@@ -17,6 +17,7 @@ export function ReviewDialog({ draft, live, onClose, onSaved }: Props) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const files = draft.draft?.files ?? [];
+  const payloads = draft.draft?.payloads ?? [];
   const conflicts = files.filter((f) => f.conflict);
   const errors = files.filter((f) => f.error);
 
@@ -120,6 +121,19 @@ export function ReviewDialog({ draft, live, onClose, onSaved }: Props) {
             </section>
           ))}
         </div>
+        {payloads.length > 0 && (
+          <section className="review-file" aria-label="Installer files">
+            <div className="review-path">Installer files added</div>
+            <ul className="manifest-list">
+              {payloads.map((p) => (
+                <li key={p.path}>
+                  <span>{p.path}</span>
+                  <small className={p.conflict ? "condition" : ""}>{p.conflict ? "Already exists" : `${(p.size / 1024 / 1024).toFixed(1)} MB · ${p.sha256.slice(0, 12)}`}</small>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
         {live && (
           <label className="live-confirm">
             <input

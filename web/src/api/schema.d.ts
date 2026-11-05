@@ -602,6 +602,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/repositories/{repo_id}/uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Upload
+         * @description Declare an installer to upload. Nothing reaches the repository until a
+         *     reviewed draft that uses it is saved.
+         */
+        post: operations["create_upload_api_repositories__repo_id__uploads_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/repositories/{repo_id}/uploads/{upload_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Upload
+         * @description How much has arrived, so an interrupted upload can resume.
+         */
+        get: operations["get_upload_api_repositories__repo_id__uploads__upload_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Append Upload
+         * @description Send the next chunk. `Upload-Offset` must equal the bytes received so far.
+         */
+        patch: operations["append_upload_api_repositories__repo_id__uploads__upload_id__patch"];
+        trace?: never;
+    };
     "/api/repositories/{repo_id}/validation": {
         parameters: {
             query?: never;
@@ -802,6 +847,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/worker/jobs/{job_id}/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Upload Input
+         * @description The installer a job works on, streamed, with its name and hash.
+         */
+        get: operations["upload_input_api_worker_jobs__job_id__upload_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/workers": {
         parameters: {
             query?: never;
@@ -967,6 +1032,11 @@ export interface components {
             owner: string;
             /** Owner Name */
             owner_name: string;
+            /**
+             * Payloads
+             * @description Installer files the draft adds to the repository when saved
+             */
+            payloads?: components["schemas"]["PayloadInfo"][];
             /** Repo Id */
             repo_id: string;
             /** Status */
@@ -1334,6 +1404,15 @@ export interface components {
             /** Operation */
             operation: string;
         };
+        /** NewUpload */
+        NewUpload: {
+            /** Filename */
+            filename: string;
+            /** Sha256 */
+            sha256: string;
+            /** Size */
+            size: number;
+        };
         /** ObjectDetail */
         ObjectDetail: {
             /** Catalogs */
@@ -1464,6 +1543,20 @@ export interface components {
             /** Version */
             version: string | null;
         };
+        /** PayloadInfo */
+        PayloadInfo: {
+            /**
+             * Conflict
+             * @description Something already exists at this path
+             */
+            conflict: boolean;
+            /** Path */
+            path: string;
+            /** Sha256 */
+            sha256: string;
+            /** Size */
+            size: number;
+        };
         /** PublishingInfo */
         PublishingInfo: {
             current: components["schemas"]["ReleaseInfo"] | null;
@@ -1591,6 +1684,24 @@ export interface components {
              * @default Bearer
              */
             token_type: string;
+        };
+        /** UploadInfo */
+        UploadInfo: {
+            /** Complete */
+            complete: boolean;
+            /** Filename */
+            filename: string;
+            /** Id */
+            id: string;
+            /**
+             * Received
+             * @description Bytes that have arrived; send the next chunk from here
+             */
+            received: number;
+            /** Sha256 */
+            sha256: string;
+            /** Size */
+            size: number;
         };
         /** ValidationError */
         ValidationError: {
@@ -2702,6 +2813,107 @@ export interface operations {
             };
         };
     };
+    create_upload_api_repositories__repo_id__uploads_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                repo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewUpload"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadInfo"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_upload_api_repositories__repo_id__uploads__upload_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                repo_id: string;
+                upload_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadInfo"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    append_upload_api_repositories__repo_id__uploads__upload_id__patch: {
+        parameters: {
+            query?: never;
+            header: {
+                "upload-offset": number;
+            };
+            path: {
+                repo_id: string;
+                upload_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadInfo"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     validation_api_repositories__repo_id__validation_get: {
         parameters: {
             query?: never;
@@ -3017,6 +3229,38 @@ export interface operations {
         };
     };
     inputs_api_worker_jobs__job_id__inputs_get: {
+        parameters: {
+            query?: never;
+            header: {
+                "x-studio-worker": string;
+                authorization: string;
+            };
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_input_api_worker_jobs__job_id__upload_get: {
         parameters: {
             query?: never;
             header: {

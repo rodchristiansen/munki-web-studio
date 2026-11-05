@@ -6,8 +6,17 @@ import secrets
 import sqlite3
 import threading
 from pathlib import Path
+from typing import Any
 
-from munki_web_studio.changes.model import ChangeSet, FileDraft, change_from_json, change_to_json
+from munki_web_studio import tagged
+from munki_web_studio.changes.model import (
+    ChangeSet,
+    FileDraft,
+    NewFile,
+    Payload,
+    change_from_json,
+    change_to_json,
+)
 from munki_web_studio.codec import Change
 
 SCHEMA = """
@@ -20,6 +29,20 @@ CREATE TABLE IF NOT EXISTS change_sets (
     status TEXT NOT NULL CHECK (status IN ('open', 'saved', 'discarded')),
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS new_files (
+    change_set TEXT NOT NULL REFERENCES change_sets(id),
+    path TEXT NOT NULL,
+    data TEXT NOT NULL,
+    PRIMARY KEY (change_set, path)
+);
+CREATE TABLE IF NOT EXISTS draft_payloads (
+    change_set TEXT NOT NULL REFERENCES change_sets(id),
+    path TEXT NOT NULL,
+    upload_id TEXT NOT NULL,
+    sha256 TEXT NOT NULL,
+    size INTEGER NOT NULL,
+    PRIMARY KEY (change_set, path)
 );
 CREATE TABLE IF NOT EXISTS saved_files (
     change_set TEXT NOT NULL REFERENCES change_sets(id),
@@ -83,6 +106,15 @@ class ChangeSetStore:
                 "WHERE change_set = ? ORDER BY path",
                 (change_id,),
             ).fetchall()
+            created = self._db.execute(
+                "SELECT path, data FROM new_files WHERE change_set = ? ORDER BY path",
+                (change_id,),
+            ).fetchall()
+            payloads = self._db.execute(
+                "SELECT path, upload_id, sha256, size FROM draft_payloads "
+                "WHERE change_set = ? ORDER BY path",
+                (change_id,),
+            ).fetchall()
         return ChangeSet(
             id=row["id"],
             repo_id=row["repo_id"],
@@ -100,6 +132,8 @@ class ChangeSetStore:
                 )
                 for f in files
             ],
+            new_files=[NewFile(n["path"], tagged.decode(json.loads(n["data"]))) for n in created],
+            payloads=[Payload(p["path"], p["upload_id"], p["sha256"], p["size"]) for p in payloads],
         )
 
     def list(self, repo_id: str, owner: str | None = None, status: str = "open") -> list[ChangeSet]:
@@ -174,3 +208,21 @@ class ChangeSetStore:
                 "SELECT commit_id FROM commits WHERE change_set = ?", (change_id,)
             ).fetchone()
         return row["commit_id"] if row else None
+
+    def put_new_file(self, change_id: str, path: str, data: Any) -> None:
+        """Add a file the draft creates, or replace its contents in the draft."""
+        with self._lock, self._db:
+            self._db.execute(
+                "INSERT OR REPLACE INTO new_files VALUES (?, ?, ?)",
+                (change_id, path, json.dumps(tagged.encode(data))),
+            )
+            self._db.execute(
+                "UPDATE change_sets SET updated_at = ? WHERE id = ?", (_now(), change_id)
+            )
+
+    def put_payload(self, change_id: str, payload: Payload) -> None:
+        with self._lock, self._db:
+            self._db.execute(
+                "INSERT OR REPLACE INTO draft_payloads VALUES (?, ?, ?, ?, ?)",
+                (change_id, payload.path, payload.upload_id, payload.sha256, payload.size),
+            )

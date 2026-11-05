@@ -10,6 +10,7 @@ runs a shell or anything from the repository.
     mwsctl worker run --url https://studio.example.org --id worker-1 --token-file worker-1.token
 """
 
+import contextlib
 import hashlib
 import io
 import logging
@@ -137,14 +138,20 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+# The system tool folders the platform tools call into (pkgutil, hdiutil, …).
+TOOL_PATH = os.defpath if sys.platform == "win32" else "/usr/bin:/bin:/usr/sbin:/sbin"
+
+
 def run_tool(
     argv: list[str],
     staging: Path,
     timeout: float,
     should_stop: Callable[[], bool],
+    stdout_file: Path | None = None,
 ) -> tuple[int, str]:
-    """Run one tool with no shell and a minimal environment. Stops it when asked."""
-    env = {"PATH": os.defpath, "HOME": str(staging), "LANG": "en_US.UTF-8"}
+    """Run one tool with no shell and a minimal environment. Stops it when asked.
+    Its standard output goes to `stdout_file` when given, otherwise to the log."""
+    env = {"PATH": TOOL_PATH, "HOME": str(staging), "LANG": "en_US.UTF-8"}
     if sys.platform == "win32":
         env |= {k: v for k, v in os.environ.items() if k.upper() in ("SYSTEMROOT", "TEMP", "TMP")}
     options: dict[str, Any] = (
@@ -152,13 +159,18 @@ def run_tool(
         if sys.platform == "win32"
         else {"start_new_session": True}
     )
-    with tempfile.TemporaryFile() as log:
+    if stdout_file is not None:
+        stdout_file.parent.mkdir(parents=True, exist_ok=True)
+    with (
+        tempfile.TemporaryFile() as log,
+        stdout_file.open("wb") if stdout_file else contextlib.nullcontext() as out,
+    ):
         process = subprocess.Popen(  # noqa: S603 - allowlisted tool, argument list, no shell
             argv,
             cwd=staging,
             env=env,
-            stdout=log,
-            stderr=subprocess.STDOUT,
+            stdout=out if out is not None else log,
+            stderr=log if out is not None else subprocess.STDOUT,
             **options,
         )
         deadline = time.monotonic() + timeout
@@ -313,14 +325,24 @@ class Worker:
         if tool is None:
             raise JobError(f"{spec.tool} is not installed on {self.id}")
         progress.update(message="Fetching inputs", progress=0.1)
-        reply = self.http.get(f"/api/worker/jobs/{job_id}/inputs")
-        if reply.status_code == 409:
-            raise JobError(reply.json().get("detail", "The studio refused the inputs"))
-        reply.raise_for_status()
-        count = safe_extract(reply.content, staging, spec.inputs)
-        progress.update(message=f"Running {spec.tool} on {count} files", progress=0.3)
-        argv = [str(tool), *(a.replace("{staging}", str(staging)) for a in spec.args)]
-        code, output = run_tool(argv, staging, spec.timeout_seconds, cancel.is_set)
+        count = 0
+        if spec.inputs:
+            reply = self.http.get(f"/api/worker/jobs/{job_id}/inputs")
+            if reply.status_code == 409:
+                raise JobError(reply.json().get("detail", "The studio refused the inputs"))
+            reply.raise_for_status()
+            count = safe_extract(reply.content, staging, spec.inputs)
+        upload = self._fetch_upload(job_id, staging) if spec.upload_argument else None
+        subject = f" on {count} files" if spec.inputs else ""
+        progress.update(message=f"Running {spec.tool}{subject}", progress=0.3)
+        replacements = {"{staging}": str(staging), "{upload}": str(upload or "")}
+        argv = [str(tool)]
+        for argument in spec.args:
+            for placeholder, value in replacements.items():
+                argument = argument.replace(placeholder, value)
+            argv.append(argument)
+        stdout = staging / spec.stdout_file if spec.stdout_file else None
+        code, output = run_tool(argv, staging, spec.timeout_seconds, cancel.is_set, stdout)
         if code != 0:
             raise JobError(f"{spec.tool} exited with status {code}: {output[-1500:]}")
         progress.update(message="Uploading results", progress=0.8)
@@ -338,6 +360,28 @@ class Worker:
             ).raise_for_status()
             artifacts.append({"path": relative, "sha256": digest, "size": path.stat().st_size})
         return artifacts, self.tools.versions.get(spec.tool, "unknown"), output
+
+    def _fetch_upload(self, job_id: str, staging: Path) -> Path:
+        """Download the job's upload into staging and check its hash."""
+        with self.http.stream("GET", f"/api/worker/jobs/{job_id}/upload") as reply:
+            if reply.status_code == 409:
+                reply.read()
+                raise JobError(reply.json().get("detail", "The studio refused the upload"))
+            reply.raise_for_status()
+            name = reply.headers.get("X-Filename", "")
+            expected = reply.headers.get("X-Content-SHA256", "")
+            if not _SAFE_PART.fullmatch(name):
+                raise JobError(f"Refused an unexpected upload name: {name!r}")
+            target = staging / "upload" / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            digest = hashlib.sha256()
+            with target.open("wb") as handle:
+                for block in reply.iter_bytes(1 << 20):
+                    digest.update(block)
+                    handle.write(block)
+        if digest.hexdigest() != expected.lower():
+            raise JobError("The upload did not arrive intact")
+        return target
 
 
 # Command line.

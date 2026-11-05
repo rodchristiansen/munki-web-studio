@@ -33,3 +33,10 @@ class RemoteSpec:
     check: Callable[[Path, list[dict[str, Any]]], dict[str, int]] | None = None
     # Arguments a person may pass when starting the job.
     arguments: frozenset[str] = frozenset()
+    # The argument naming an upload the worker receives as "{upload}", if any.
+    upload_argument: str | None = None
+    # Where the tool's standard output is saved, relative to staging, if anywhere.
+    stdout_file: str | None = None
+    # The output is a pkginfo that becomes a draft for review, with the upload
+    # as its installer, instead of replacing anything.
+    creates_draft: bool = False

@@ -8,6 +8,7 @@ import { Icon } from "./components/Icon";
 import { ManifestsWorkspace } from "./components/ManifestsWorkspace";
 import { PackageEditor } from "./components/PackageEditor";
 import { PackageList } from "./components/PackageList";
+import { ImportDialog, setImportCsrf } from "./components/ImportDialog";
 import { ReviewDialog } from "./components/ReviewDialog";
 import { Settings } from "./components/Settings";
 import { useDraft } from "./draft";
@@ -66,6 +67,7 @@ export function App() {
         }
         if (data) {
           setCsrfToken(data.csrf_token);
+          setImportCsrf(data.csrf_token);
           setSession(data);
         }
       })
@@ -145,6 +147,18 @@ export function App() {
   const draft = useDraft(repoId, canEdit);
   const [fieldTypes, setFieldTypes] = useState<Record<string, string>>({});
   const [reviewing, setReviewing] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importOp, setImportOp] = useState<{ available: boolean; needs: string | null } | null>(null);
+  useEffect(() => {
+    if (!canEdit) return;
+    api
+      .GET("/api/operations")
+      .then(({ data }) => {
+        const op = data?.find((o) => o.name === "package.import");
+        setImportOp(op ? { available: op.available, needs: op.needs ?? null } : null);
+      })
+      .catch(() => undefined);
+  }, [canEdit, importing]);
   useEffect(() => {
     if (!canEdit) return;
     api
@@ -335,6 +349,13 @@ export function App() {
             />
           ) : (
             <section aria-label="Package workspace">
+              {canEdit && importOp && (
+                <div className="workspace-actions">
+                  <button type="button" onClick={() => setImporting(true)}>
+                    Import a package…
+                  </button>
+                </div>
+              )}
               <div className="content">
                 <PackageList
                   packages={pkgs}
@@ -380,6 +401,18 @@ export function App() {
             if (git?.enabled) setCommitting(saved);
             void rescanNow();
             setGeneration((g) => g + 1);
+          }}
+        />
+      )}
+      {importing && repoId && importOp && (
+        <ImportDialog
+          repoId={repoId}
+          available={importOp.available}
+          needs={importOp.needs}
+          onClose={() => setImporting(false)}
+          onDrafted={() => {
+            setImporting(false);
+            void draft.refresh().then(() => setReviewing(true));
           }}
         />
       )}
