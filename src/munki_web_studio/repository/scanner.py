@@ -11,7 +11,7 @@ from munki_web_studio.codec import ParseError, load, revision_of
 from munki_web_studio.codec.model import MAX_FILE_BYTES
 from munki_web_studio.repository.config import Repository
 from munki_web_studio.repository.index import Index
-from munki_web_studio.repository.paths import PathEscapeError, contained
+from munki_web_studio.repository.paths import PathEscapeError, contained, read_contained
 
 
 @dataclass
@@ -71,17 +71,20 @@ def scan(repo: Repository, index: Index, *, full: bool = False) -> ScanResult:
             if not full and previous and previous[:2] == (stat.st_size, stat.st_mtime_ns):
                 result.unchanged += 1
                 continue
-            if stat.st_size > MAX_FILE_BYTES:
-                raw = b""
-                revision = f"size:{stat.st_size}:{stat.st_mtime_ns}"
-            else:
-                with path.open("rb") as handle:
-                    raw = handle.read()
-                revision = revision_of(raw)
+            try:
+                read = read_contained(repo.root, relative, MAX_FILE_BYTES)
+            except PathEscapeError:
+                result.files -= 1
+                seen.discard(relative)
+                result.skipped.append(relative)
+                continue
+            raw = read.raw or b""
+            too_large = read.raw is None
+            revision = f"size:{read.size}:{read.mtime_ns}" if too_large else revision_of(raw)
             if previous and previous[2] == revision:
                 db.execute(
                     "UPDATE objects SET size = ?, mtime_ns = ? WHERE repo_id = ? AND path = ?",
-                    (stat.st_size, stat.st_mtime_ns, repo.id, relative),
+                    (read.size, read.mtime_ns, repo.id, relative),
                 )
                 result.unchanged += 1
                 continue
@@ -91,8 +94,8 @@ def scan(repo: Repository, index: Index, *, full: bool = False) -> ScanResult:
                 "path": relative,
                 "kind": kind,
                 "format": None,
-                "size": stat.st_size,
-                "mtime_ns": stat.st_mtime_ns,
+                "size": read.size,
+                "mtime_ns": read.mtime_ns,
                 "revision": revision,
                 "status": "ok",
                 "error": None,
@@ -106,7 +109,7 @@ def scan(repo: Repository, index: Index, *, full: bool = False) -> ScanResult:
                 "summary": "{}",
             }
             try:
-                if not raw and stat.st_size > MAX_FILE_BYTES:
+                if too_large:
                     raise ParseError(f"File is larger than {MAX_FILE_BYTES // (1024 * 1024)} MB")
                 document = load(raw)
             except ParseError as error:
