@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import type { ObjectDetail, Package } from "../api/client";
 import { TABS, type FieldSpec } from "../platform";
 import { decode, type Value } from "../tagged";
-import { asDict, items, show, type Dict } from "../values";
+import { asDict, items, lookup, show, type Dict } from "../values";
 import { Icon } from "./Icon";
 
 interface Props {
@@ -11,7 +11,7 @@ interface Props {
   onSelectVersion: (path: string) => void;
 }
 
-const LISTED = new Set(TABS.flatMap((t) => t.sections.flatMap((s) => s.fields.map((f) => f.key))));
+const LISTED = new Set(TABS.flatMap((t) => t.sections.flatMap((s) => s.fields.map((f) => f.key.split(".")[0]))));
 
 export function PackageEditor({ detail, pkg, onSelectVersion }: Props) {
   const [tab, setTab] = useState(TABS[0]?.name ?? "Overview");
@@ -101,7 +101,7 @@ export function PackageEditor({ detail, pkg, onSelectVersion }: Props) {
                     <h3>{section.title}</h3>
                     <div className="card-fields">
                       {section.fields.map((f) => (
-                        <Field key={f.key} spec={f} value={data.get(f.key)} />
+                        <Field key={f.key} spec={f} value={lookup(data, f.key)} />
                       ))}
                     </div>
                   </section>

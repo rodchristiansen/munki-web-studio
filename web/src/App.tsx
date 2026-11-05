@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, type ObjectDetail, type ObjectSummary, type Package, type RepositoryInfo } from "./api/client";
-import icon from "./assets/munkistudio.png";
+import { Brand } from "./components/Brand";
 import { Icon } from "./components/Icon";
 import { ManifestView } from "./components/ManifestView";
 import { PackageEditor } from "./components/PackageEditor";
@@ -101,7 +101,7 @@ export function App() {
     <div className="shell">
       <header className="topbar">
         <div className="repo">
-          <img className="mark" src={icon} alt="MunkiStudio app icon" width={36} height={36} />
+          <Brand />
           <div>
             <strong>{repo?.name ?? "No repository"}</strong>
             <div>
