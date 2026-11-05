@@ -152,18 +152,19 @@ def validate(index: Index, repo: Repository) -> list[Issue]:
                         ref.target,
                     )
                 )
-        payload = obj.summary.get("payload") if obj.kind == "pkginfo" else None
-        if payload and not _exists(repo.root, payload):
-            issues.append(
-                Issue(
-                    "warning",
-                    "missing-payload",
-                    obj.path,
-                    f"Payload {payload!r} is missing",
-                    "payload",
-                    payload,
+        payloads = [obj.summary.get("payload"), *obj.summary.get("payloads", [])]
+        for payload in payloads if obj.kind == "pkginfo" else []:
+            if payload and not _exists(repo.root, payload):
+                issues.append(
+                    Issue(
+                        "warning",
+                        "missing-payload",
+                        obj.path,
+                        f"Payload {payload!r} is missing",
+                        "payload",
+                        payload,
+                    )
                 )
-            )
     for cycle in graph.include_cycles():
         first = graph.manifests[cycle[0]].path
         issues.append(
