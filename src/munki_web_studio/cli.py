@@ -61,6 +61,40 @@ def openapi(
         typer.echo(text, nl=False)
 
 
+@cli.command()
+def mcp(
+    repo: Annotated[
+        Path | None,
+        typer.Option("--repo", "-r", help="Serve this repository folder.", file_okay=False),
+    ] = None,
+    config: Annotated[
+        Path | None, typer.Option(help="Serve the repositories in this config file.")
+    ] = None,
+) -> None:
+    """Run the MCP server over stdio, for assistants on this machine."""
+    import tempfile
+
+    from munki_web_studio.mcp import create_mcp
+    from munki_web_studio.repository.config import Repository, Settings, load_settings
+    from munki_web_studio.repository.index import Index
+    from munki_web_studio.repository.scanner import scan
+    from munki_web_studio.services import Services
+
+    with tempfile.TemporaryDirectory() as scratch:
+        if config:
+            settings = load_settings(config)
+        else:
+            root = (repo or Path(".")).resolve()
+            settings = Settings(
+                repositories=(Repository(id="local", name=root.name, root=root),),
+                state_dir=Path(scratch),
+            )
+        index = Index(settings.state_dir / "index.sqlite")
+        for repository in settings.repositories:
+            scan(repository, index)
+        create_mcp(Services(settings, index)).run(show_banner=False)
+
+
 from munki_web_studio import local  # noqa: E402
 
 local.register(cli)
