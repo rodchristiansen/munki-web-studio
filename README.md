@@ -70,6 +70,30 @@ polling when it cannot hold a stream open.
 Jobs that need tools the studio does not have, such as Munki's own command-line
 tools, are refused with the capability they need instead of waiting in a queue.
 
+### Workers
+
+Jobs that need Munki's own tools run on a worker: `mwsctl worker run` on a Mac
+with the Munki tools installed. The worker connects out to the studio, reports
+its macOS version and the version of each tool it finds, and runs only
+`makecatalogs` and `makepkginfo` from `/usr/local/munki`, with fixed arguments,
+in a fresh staging folder per job. It sends back the output files with their
+SHA-256 hashes, and the studio checks every hash before it records a result.
+Settings shows each worker, its tools and what it can run; when no worker can
+run a job, Activity says which tool is needed.
+
+Make a token for the worker. The command prints the token, and the lines to add
+to the studio's config file:
+
+```sh
+mwsctl worker token --id mac-1
+```
+
+Save the token on the Mac in a file only you can read, then start the worker:
+
+```sh
+mwsctl worker run --url https://studio.example.org --id mac-1 --token-file ~/.config/mwsctl/mac-1.token
+```
+
 ## Sign-in
 
 Without an `[auth]` table the studio is single-user and answers only on this

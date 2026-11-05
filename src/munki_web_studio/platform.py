@@ -2,6 +2,8 @@
 
 from typing import Any, cast
 
+from munki_web_studio.jobs.remote import RemoteSpec
+
 # Top-level folders that hold metadata, and the kind of object each file is.
 KINDS = {"pkgsinfo": "pkginfo", "manifests": "manifest", "catalogs": "catalog"}
 
@@ -9,6 +11,32 @@ KINDS = {"pkgsinfo": "pkginfo", "manifests": "manifest", "catalogs": "catalog"}
 SUFFIXES: frozenset[str] | None = None
 
 IGNORED_NAMES = frozenset({".DS_Store", ".gitkeep", "Thumbs.db"})
+
+
+# Workers. A Mac worker runs these Munki tools and nothing else, from these paths.
+WORKER_PLATFORM = "macOS"
+WORKER_TOOLS = {
+    "makecatalogs": "/usr/local/munki/makecatalogs",
+    "makepkginfo": "/usr/local/munki/makepkginfo",
+}
+TOOL_VERSION_ARGS = ("--version",)
+# Each capability a worker can offer, and the tools it needs.
+CAPABILITIES = {
+    "catalog.generate": ("makecatalogs",),
+    "installer.inspect": ("makepkginfo",),
+}
+REMOTE_OPERATIONS = (
+    RemoteSpec(
+        name="catalog.preview",
+        title="Build catalogs with makecatalogs",
+        capability="catalog.generate",
+        tool="makecatalogs",
+        # Payloads are not sent to the worker, so their existence is not checked.
+        args=("--skip-pkg-check", "{staging}"),
+        inputs=("pkgsinfo",),
+        outputs="catalogs",
+    ),
+)
 
 
 # Manifest sections that name packages, and sections that name other manifests.

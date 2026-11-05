@@ -212,3 +212,11 @@ body { min-height: 100vh; }
 .job-row span { display: flex; flex-direction: column; text-align: left; }
 .job-row small { color: var(--muted); font-size: 11px; }
 progress { width: 100%; accent-color: var(--accent); }
+.needs { flex-basis: 100%; margin: 2px 0 0; font-size: 11px; }
+.settings { overflow: auto; }
+.worker-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.worker-table th, .worker-table td { text-align: left; vertical-align: top; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.worker-table small { color: var(--muted); }
+.online { color: var(--accent); font-weight: 600; }
+.offline { color: var(--warning); }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }

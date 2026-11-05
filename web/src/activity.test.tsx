@@ -26,8 +26,13 @@ async function respond(request: Request): Promise<Response> {
   if (pathname === "/api/repositories") return json([{ id: "main", name: "Main", writable: false, live: false, last_scan: null }]);
   if (pathname === "/api/operations")
     return json([
-      { name: "repository.validate", title: "Validate the repository", requirements: ["portable"], available: true },
-      { name: "catalog.generate", title: "Generate catalogs", requirements: ["macos"], available: false },
+      { name: "repository.validate", title: "Validate the repository", requirements: ["portable"], available: true, needs: null },
+      { name: "catalog.generate", title: "Generate catalogs", requirements: ["catalog.generate"], available: false, needs: "Needs a macOS worker with makecatalogs; none is connected" },
+    ]);
+  if (pathname === "/api/workers")
+    return json([
+      { id: "mac-1", configured: true, online: true, platform: "macOS", os_version: "27.2", tools: { makecatalogs: "2026.10.16" }, capabilities: ["catalog.generate"], last_seen: 1 },
+      { id: "mac-2", configured: true, online: false, platform: null, os_version: null, tools: {}, capabilities: [], last_seen: null },
     ]);
   if (pathname.endsWith("/jobs") && request.method === "POST") {
     const created = job("j2", "queued");
@@ -68,7 +73,9 @@ describe("activity", () => {
   it("starts a job with a fresh idempotency key and selects it", async () => {
     render(<App />);
     const list = await screen.findByRole("complementary", { name: "Jobs" });
-    expect(await within(list).findByRole("button", { name: "Generate catalogs" })).toBeDisabled();
+    const blocked = await within(list).findByRole("button", { name: "Generate catalogs" });
+    expect(blocked).toBeDisabled();
+    expect(blocked).toHaveAccessibleDescription(/macOS worker with makecatalogs/);
     await userEvent.click(within(list).getByRole("button", { name: "Validate the repository" }));
     await waitFor(() => expect(window.location.search).toContain("job=j2"));
     const body = posts.find((p) => p.path.endsWith("/jobs"))?.body as { operation: string; idempotency_key: string };
@@ -81,5 +88,16 @@ describe("activity", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Cancel job" }));
     expect(await screen.findByRole("button", { name: "Cancelling…" })).toBeDisabled();
     expect(posts.some((p) => p.path.endsWith("/jobs/j1/cancel"))).toBe(true);
+  });
+
+  it("shows workers, their tools, and what each job needs in Settings", async () => {
+    window.history.replaceState(null, "", "/?area=settings");
+    render(<App />);
+    const table = await screen.findByRole("table", { name: "Workers and their capabilities" });
+    const row = within(table).getByRole("row", { name: /mac-1/ });
+    expect(within(row).getByText("Connected")).toBeInTheDocument();
+    expect(within(row).getByText("2026.10.16")).toBeInTheDocument();
+    expect(within(table).getByRole("row", { name: /mac-2/ })).toHaveTextContent("Never connected");
+    expect(await screen.findByText("Needs a macOS worker with makecatalogs; none is connected")).toBeInTheDocument();
   });
 });

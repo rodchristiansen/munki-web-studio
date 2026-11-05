@@ -349,6 +349,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/repositories/{repo_id}/jobs/{job_id}/artifacts/{path}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download Artifact
+         * @description A file a finished job produced.
+         */
+        get: operations["download_artifact_api_repositories__repo_id__jobs__job_id__artifacts__path__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/repositories/{repo_id}/jobs/{job_id}/cancel": {
         parameters: {
             query?: never;
@@ -563,6 +583,166 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/worker/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Claim
+         * @description Take the oldest job this worker can run, if there is one.
+         */
+        post: operations["claim_api_worker_claim_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/worker/hello": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Hello
+         * @description The handshake: what this worker is and can do. Repeat it every so often.
+         */
+        post: operations["hello_api_worker_hello_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/worker/jobs/{job_id}/artifacts/{path}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Upload Artifact
+         * @description One output file. Its hash must match the header, or it is refused.
+         */
+        put: operations["upload_artifact_api_worker_jobs__job_id__artifacts__path__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/worker/jobs/{job_id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Complete
+         * @description Finish a job. Every listed artifact must already be uploaded with that hash,
+         *     and only artifacts listed here count; anything else uploaded is removed.
+         */
+        post: operations["complete_api_worker_jobs__job_id__complete_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/worker/jobs/{job_id}/fail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Fail */
+        post: operations["fail_api_worker_jobs__job_id__fail_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/worker/jobs/{job_id}/heartbeat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Heartbeat
+         * @description Keep the lease and report progress; the reply says whether to stop.
+         */
+        post: operations["heartbeat_api_worker_jobs__job_id__heartbeat_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/worker/jobs/{job_id}/inputs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Inputs
+         * @description The repository files the job needs, as a gzipped tar. Refused when the
+         *     repository has changed since the job was queued, so the job runs on exactly
+         *     the revision it was asked for.
+         */
+        get: operations["inputs_api_worker_jobs__job_id__inputs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/workers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Workers
+         * @description Every configured worker, whether it is connected, and what it can do.
+         */
+        get: operations["list_workers_api_workers_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/token": {
         parameters: {
             query?: never;
@@ -587,6 +767,15 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** Artifact */
+        Artifact: {
+            /** Path */
+            path: string;
+            /** Sha256 */
+            sha256: string;
+            /** Size */
+            size: number;
+        };
         /** AuditEntryInfo */
         AuditEntryInfo: {
             /** Action */
@@ -630,6 +819,18 @@ export interface components {
             /** Token Endpoint */
             token_endpoint?: string | null;
         };
+        /** Beat */
+        Beat: {
+            /** Message */
+            message?: string | null;
+            /** Progress */
+            progress?: number | null;
+        };
+        /** BeatReply */
+        BeatReply: {
+            /** Cancel */
+            cancel: boolean;
+        };
         /** CatalogSummary */
         CatalogSummary: {
             /** Items */
@@ -657,6 +858,35 @@ export interface components {
             title: string;
             /** Updated At */
             updated_at: string;
+        };
+        /** ClaimedJob */
+        ClaimedJob: {
+            /** Arguments */
+            arguments: {
+                [key: string]: unknown;
+            };
+            /** Id */
+            id: string;
+            /** Input Revision */
+            input_revision: string;
+            /** Lease Seconds */
+            lease_seconds: number;
+            /** Operation */
+            operation: string;
+            /** Repo Id */
+            repo_id: string;
+        };
+        /** Completion */
+        Completion: {
+            /** Artifacts */
+            artifacts: components["schemas"]["Artifact"][];
+            /**
+             * Output
+             * @default
+             */
+            output: string;
+            /** Tool Version */
+            tool_version: string;
         };
         /** ConditionInfo */
         ConditionInfo: {
@@ -692,6 +922,22 @@ export interface components {
             line?: number | null;
             /** Message */
             message: string;
+        };
+        /** Failure */
+        Failure: {
+            /**
+             * Cancelled
+             * @description The worker stopped because it was asked to
+             * @default false
+             */
+            cancelled: boolean;
+            /** Error */
+            error: string;
+            /**
+             * Retryable
+             * @default false
+             */
+            retryable: boolean;
         };
         /** FieldEdit */
         FieldEdit: {
@@ -757,6 +1003,36 @@ export interface components {
             status: string;
             /** Version */
             version: string;
+        };
+        /** Hello */
+        Hello: {
+            /** Capabilities */
+            capabilities: string[];
+            /** Os Version */
+            os_version: string;
+            /** Platform */
+            platform: string;
+            /**
+             * Tools
+             * @description Tool name to version, for the tools it found
+             */
+            tools: {
+                [key: string]: string;
+            };
+        };
+        /** HelloReply */
+        HelloReply: {
+            /**
+             * Capabilities
+             * @description The capabilities the studio accepted
+             */
+            capabilities: string[];
+            /** Heartbeat Seconds */
+            heartbeat_seconds: number;
+            /** Lease Seconds */
+            lease_seconds: number;
+            /** Worker */
+            worker: string;
         };
         /** IncludedManifest */
         IncludedManifest: {
@@ -989,6 +1265,11 @@ export interface components {
             available: boolean;
             /** Name */
             name: string;
+            /**
+             * Needs
+             * @description What is missing when it is not available
+             */
+            needs: string | null;
             /** Requirements */
             requirements: string[];
             /** Title */
@@ -1165,6 +1446,27 @@ export interface components {
             issues: components["schemas"]["ValidationIssue"][];
             /** Warnings */
             warnings: number;
+        };
+        /** WorkerView */
+        WorkerView: {
+            /** Capabilities */
+            capabilities: string[];
+            /** Configured */
+            configured: boolean;
+            /** Id */
+            id: string;
+            /** Last Seen */
+            last_seen: number | null;
+            /** Online */
+            online: boolean;
+            /** Os Version */
+            os_version: string | null;
+            /** Platform */
+            platform: string | null;
+            /** Tools */
+            tools: {
+                [key: string]: string;
+            };
         };
     };
     responses: never;
@@ -1787,6 +2089,37 @@ export interface operations {
             };
         };
     };
+    download_artifact_api_repositories__repo_id__jobs__job_id__artifacts__path__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                repo_id: string;
+                job_id: string;
+                path: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     cancel_job_api_repositories__repo_id__jobs__job_id__cancel_post: {
         parameters: {
             query?: never;
@@ -2135,6 +2468,289 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SessionInfo"];
+                };
+            };
+        };
+    };
+    claim_api_worker_claim_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "x-studio-worker": string;
+                authorization: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClaimedJob"];
+                };
+            };
+            /** @description Nothing to do */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    hello_api_worker_hello_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "x-studio-worker": string;
+                authorization: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Hello"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HelloReply"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_artifact_api_worker_jobs__job_id__artifacts__path__put: {
+        parameters: {
+            query?: never;
+            header: {
+                "x-content-sha256": string;
+                "x-studio-worker": string;
+                authorization: string;
+            };
+            path: {
+                job_id: string;
+                path: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    complete_api_worker_jobs__job_id__complete_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "x-studio-worker": string;
+                authorization: string;
+            };
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Completion"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    fail_api_worker_jobs__job_id__fail_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "x-studio-worker": string;
+                authorization: string;
+            };
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Failure"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    heartbeat_api_worker_jobs__job_id__heartbeat_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "x-studio-worker": string;
+                authorization: string;
+            };
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Beat"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BeatReply"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    inputs_api_worker_jobs__job_id__inputs_get: {
+        parameters: {
+            query?: never;
+            header: {
+                "x-studio-worker": string;
+                authorization: string;
+            };
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_workers_api_workers_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkerView"][];
                 };
             };
         };

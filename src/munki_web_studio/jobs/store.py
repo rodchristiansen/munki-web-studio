@@ -58,6 +58,15 @@ CREATE TABLE IF NOT EXISTS job_events (
     progress REAL
 );
 CREATE INDEX IF NOT EXISTS job_events_by_job ON job_events (job_id, id);
+CREATE TABLE IF NOT EXISTS workers (
+    id TEXT PRIMARY KEY,
+    platform TEXT NOT NULL,
+    os_version TEXT NOT NULL,
+    tools TEXT NOT NULL,
+    capabilities TEXT NOT NULL,
+    connected_at TEXT NOT NULL,
+    last_seen REAL NOT NULL
+);
 -- A finished job's outcome never changes.
 CREATE TRIGGER IF NOT EXISTS jobs_final BEFORE UPDATE ON jobs
 WHEN OLD.status IN ('succeeded', 'failed', 'cancelled')
@@ -103,6 +112,17 @@ class Job:
     @property
     def finished(self) -> bool:
         return self.status in TERMINAL
+
+
+@dataclass(frozen=True)
+class WorkerInfo:
+    id: str
+    platform: str
+    os_version: str
+    tools: dict[str, str]
+    capabilities: list[str]
+    connected_at: str
+    last_seen: float
 
 
 @dataclass(frozen=True)
@@ -504,3 +524,67 @@ class JobStore:
                 raise
         self._notify()
         return self.get(job_id)
+
+    # Workers on other machines, and what they said they can do.
+
+    def hello(
+        self,
+        worker: str,
+        *,
+        platform: str,
+        os_version: str,
+        tools: dict[str, str],
+        capabilities: list[str],
+    ) -> WorkerInfo:
+        """Record a worker's handshake: its platform, tool versions and capabilities."""
+        with self._lock:
+            self._db.execute(
+                "INSERT INTO workers VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET "
+                "platform = excluded.platform, os_version = excluded.os_version, "
+                "tools = excluded.tools, capabilities = excluded.capabilities, "
+                "connected_at = excluded.connected_at, last_seen = excluded.last_seen",
+                (
+                    worker,
+                    platform,
+                    os_version,
+                    json.dumps(tools, sort_keys=True),
+                    json.dumps(sorted(set(capabilities))),
+                    _now(),
+                    self._clock(),
+                ),
+            )
+        found = self.worker(worker)
+        if found is None:
+            raise RuntimeError(f"Worker {worker} vanished")
+        return found
+
+    def seen(self, worker: str) -> None:
+        with self._lock:
+            self._db.execute(
+                "UPDATE workers SET last_seen = ? WHERE id = ?", (self._clock(), worker)
+            )
+
+    def worker(self, worker: str) -> WorkerInfo | None:
+        with self._lock:
+            row = self._db.execute("SELECT * FROM workers WHERE id = ?", (worker,)).fetchone()
+        return self._worker(row) if row else None
+
+    def workers(self) -> list[WorkerInfo]:
+        with self._lock:
+            rows = self._db.execute("SELECT * FROM workers ORDER BY id").fetchall()
+        return [self._worker(r) for r in rows]
+
+    def online(self, worker: WorkerInfo, max_age: float) -> bool:
+        return self._clock() - worker.last_seen <= max_age
+
+    @staticmethod
+    def _worker(row: sqlite3.Row) -> WorkerInfo:
+        return WorkerInfo(
+            id=row["id"],
+            platform=row["platform"],
+            os_version=row["os_version"],
+            tools=json.loads(row["tools"]),
+            capabilities=json.loads(row["capabilities"]),
+            connected_at=row["connected_at"],
+            last_seen=row["last_seen"],
+        )
