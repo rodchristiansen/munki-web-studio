@@ -243,6 +243,27 @@ export interface paths {
         patch: operations["edit_pkginfo_fields_api_repositories__repo_id__changesets__change_id__pkginfo__path__patch"];
         trace?: never;
     };
+    "/api/repositories/{repo_id}/changesets/{change_id}/save": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Save Change Set
+         * @description Write a draft into the repository: every file or none, and only if no file
+         *     changed since the draft was made.
+         */
+        post: operations["save_change_set_api_repositories__repo_id__changesets__change_id__save_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/repositories/{repo_id}/conditions/{path}": {
         parameters: {
             query?: never;
@@ -834,10 +855,25 @@ export interface components {
             /** Id */
             id: string;
             last_scan: components["schemas"]["ScanSummary"] | null;
+            /**
+             * Live
+             * @description Saving here changes what clients see at once
+             * @default false
+             */
+            live: boolean;
             /** Name */
             name: string;
             /** Writable */
             writable: boolean;
+        };
+        /** SaveRequest */
+        SaveRequest: {
+            /**
+             * Acknowledge Live
+             * @description Required for a live repository: you understand clients see the change at once
+             * @default false
+             */
+            acknowledge_live: boolean;
         };
         /** ScanSummary */
         ScanSummary: {
@@ -1344,6 +1380,42 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["FieldEdit"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangeSetInfo"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_change_set_api_repositories__repo_id__changesets__change_id__save_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                repo_id: string;
+                change_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveRequest"];
             };
         };
         responses: {
