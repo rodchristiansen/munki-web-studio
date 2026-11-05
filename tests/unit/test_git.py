@@ -140,6 +140,10 @@ def test_hooks_never_run(studio: TestClient, root: Path, tmp_path: Path) -> None
         ("core.sshCommand", "touch {marker}"),
         ("include.path", "{marker}.config"),
         ("credential.helper", "!touch {marker}"),
+        ("remote.origin.vcs", "evil"),
+        ("core.alternateRefsCommand", "touch {marker}"),
+        ("extensions.worktreeConfig", "true"),
+        ("uploadpack.packObjectsHook", "touch {marker}"),
     ],
 )
 def test_repository_config_that_runs_programs_turns_git_off(
@@ -150,9 +154,10 @@ def test_repository_config_that_runs_programs_turns_git_off(
     git(root, "config", key, value.format(marker=marker))
     status = studio.get("/api/repositories/fixture/git").json()
     assert not status["enabled"] and key.lower() in status["reason"]
+    assert "could run programs" in status["reason"]
     change_id = save_edit(studio, EDITOR, "Filtered")
     refused = commit(studio, change_id)
-    assert refused.status_code == 409 and "would run programs" in refused.json()["detail"]
+    assert refused.status_code == 409 and "could run programs" in refused.json()["detail"]
     assert not marker.exists()
 
 
@@ -193,3 +198,39 @@ def test_push_needs_an_upstream_and_refuses_local_remotes(
     assert studio.get("/api/repositories/fixture/git").json()["ahead"] == 1
     refused = studio.post("/api/repositories/fixture/git/push")
     assert refused.status_code == 409 and "https and ssh" in refused.json()["detail"]
+
+
+def test_worktree_config_is_checked_too(studio: TestClient, root: Path, tmp_path: Path) -> None:
+    git(root, "config", "extensions.worktreeConfig", "true")
+    git(root, "config", "--worktree", "filter.evil.clean", f"touch {tmp_path / 'ran'}")
+    git(root, "config", "--unset", "extensions.worktreeConfig")
+    status = studio.get("/api/repositories/fixture/git").json()
+    assert status["enabled"]  # config.worktree is only read when the extension is on
+    git(root, "config", "extensions.worktreeConfig", "true")
+    status = studio.get("/api/repositories/fixture/git").json()
+    assert not status["enabled"] and "filter.evil.clean" in status["reason"]
+
+
+def test_ordinary_repository_settings_are_accepted(studio: TestClient, root: Path) -> None:
+    for key, value in (
+        ("core.autocrlf", "input"),
+        ("core.hooksPath", ".husky"),
+        ("pull.rebase", "true"),
+        ("branch.main.description", "Main"),
+        ("remote.origin.url", "https://example.invalid/repo.git"),
+        ("user.name", "Someone"),
+    ):
+        git(root, "config", key, value)
+    assert studio.get("/api/repositories/fixture/git").json()["enabled"]
+
+
+def test_credentials_in_remote_urls_do_not_reach_the_browser(
+    studio: TestClient, root: Path
+) -> None:
+    git(root, "remote", "add", "origin", "https://someone:s3cret-token@127.0.0.1:9/repo.git")
+    git(root, "config", "branch.main.remote", "origin")
+    git(root, "config", "branch.main.merge", "refs/heads/main")
+    git(root, "update-ref", "refs/remotes/origin/main", "HEAD")
+    refused = studio.post("/api/repositories/fixture/git/push")
+    assert refused.status_code == 409
+    assert "s3cret-token" not in refused.text and "someone" not in refused.text

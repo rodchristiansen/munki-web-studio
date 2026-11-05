@@ -22,24 +22,33 @@ from munki_web_studio.repository.config import Repository
 TIMEOUT_SECONDS = 60
 PUSH_TIMEOUT_SECONDS = 180
 
-# Repository config keys that would make Git run something, or read config from
-# somewhere else, and that the overrides below do not already cancel (hooksPath,
-# fsmonitor, pager, editor and askPass are overridden on every command, so a
-# repository that sets them, as Husky does, still works). Matched lowercase.
-UNSAFE_CONFIG = re.compile(
+# The repository config keys the studio accepts. Git can be told to run a
+# program, or to read more config, by many keys, and new ones appear in new Git
+# versions, so anything not listed here turns Git off for the repository
+# rather than being trusted. hooksPath, fsmonitor, pager and editor are also
+# overridden on every command, so a repository that sets them, as Husky does,
+# still works. Matched against lowercase keys.
+ALLOWED_CONFIG = re.compile(
     r"^(?:"
-    r"filter\..+\.(?:clean|smudge|process)"
-    r"|diff\..+\.(?:textconv|command)"
-    r"|merge\..+\.driver"
-    r"|core\.(?:sshcommand|gitproxy)"
-    r"|credential\..*"
-    r"|gpg\..*program"
-    r"|include\.path|includeif\..+\.path"
-    r"|sequence\.editor|uploadpack\..*|receive\..*|remote\..+\.(?:uploadpack|receivepack|proxy)"
-    r"|url\..+\.(?:insteadof|pushinsteadof)"
-    r"|http\..*proxy|http\.proxy"
+    r"core\.(?:repositoryformatversion|filemode|bare|logallrefupdates|ignorecase"
+    r"|precomposeunicode|autocrlf|eol|safecrlf|symlinks|quotepath|untrackedcache"
+    r"|longpaths|checkstat|trustctime|sharedrepository|hookspath|fsmonitor|pager|editor"
+    r"|abbrev|whitespace|commentchar|preloadindex|fscache)"
+    r"|user\.(?:name|email|signingkey)"
+    r"|init\.defaultbranch"
+    r"|extensions\.objectformat"
+    r"|branch\.[^.]+(?:\.[^.]+)*\.(?:remote|merge|rebase|pushremote|description)"
+    r"|remote\.[^.]+\.(?:url|pushurl|fetch|push|tagopt|prune|mirror|skipdefaultupdate)"
+    r"|pull\.(?:rebase|ff)|push\.(?:default|autosetupremote|followtags)"
+    r"|fetch\.(?:prune|prunetags)"
+    r"|gc\.\w+|maintenance\.(?:auto|strategy)"
+    r"|commit\.gpgsign|tag\.gpgsign"
+    r"|diff\.(?:algorithm|renames|renamelimit|mnemonicprefix|colormoved|indentheuristic)"
+    r"|merge\.(?:conflictstyle|ff|renames)"
+    r"|color\.\w+(?:\.\w+)?|advice\.\w+|status\.\w+|log\.\w+|rerere\.enabled"
     r")$"
 )
+SCOPES = frozenset({"local", "worktree"})
 
 OVERRIDES = (
     "core.fsmonitor=false",
@@ -62,6 +71,11 @@ OVERRIDES = (
 
 class GitError(Exception):
     pass
+
+
+def _redact(text: str) -> str:
+    """Drop any user name or token in a URL before Git's words reach a browser."""
+    return re.sub(r"(\w+://)[^/@\s]+@", r"\1***@", text)[:500]
 
 
 @dataclass
@@ -124,7 +138,7 @@ class Git:
             raise GitError(f"git {args[0]} took longer than {int(timeout)} seconds") from None
         if check and done.returncode != 0:
             message = (done.stderr or done.stdout).strip().splitlines()
-            raise GitError(message[-1] if message else f"git {args[0]} failed")
+            raise GitError(_redact(message[-1]) if message else f"git {args[0]} failed")
         return done.stdout
 
     def is_repository(self) -> bool:
@@ -135,10 +149,15 @@ class Git:
         return Path(top).resolve() == self.repo.root.resolve()
 
     def unsafe_settings(self) -> list[str]:
-        """Repository config that would run a program or pull in other config."""
-        listing = self.run("config", "--local", "--list", "--name-only", "--null", check=False)
-        keys = {k.lower() for k in listing.split("\0") if k}
-        return sorted(k for k in keys if UNSAFE_CONFIG.match(k))
+        """Repository config keys outside the allowlist, from every scope Git reads
+        with system and global config ignored: local and per-worktree."""
+        listing = self.run("config", "--list", "--show-scope", "--name-only", "--null")
+        fields = listing.split("\0")
+        found: set[str] = set()
+        for scope, key in zip(fields[0::2], fields[1::2], strict=False):
+            if scope in SCOPES and key and not ALLOWED_CONFIG.match(key.lower()):
+                found.add(key.lower())
+        return sorted(found)
 
     def check(self) -> str | None:
         """Why Git cannot be used here, or None when it can."""
@@ -149,7 +168,8 @@ class Git:
             return (
                 "the repository's Git config sets "
                 + ", ".join(unsafe)
-                + ", which would run programs; the studio leaves Git alone here"
+                + ", which the studio does not allow because it could run programs; "
+                "the studio leaves Git alone here"
             )
         return None
 
