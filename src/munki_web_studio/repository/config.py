@@ -7,6 +7,10 @@ path = "/srv/repo"
 writable = false
 
 state_dir = "/var/lib/studio"
+
+[[workers]]
+id = "mac-1"
+token_sha256 = "…"   # from `<command> worker token`; the worker keeps the token
 """
 
 import tomllib
@@ -30,6 +34,14 @@ class Repository:
     live: bool = False
 
 
+@dataclass(frozen=True)
+class WorkerEntry:
+    """A worker allowed to connect. Only the token's hash is kept here."""
+
+    id: str
+    token_sha256: str
+
+
 LOCAL_HOSTS = ("localhost", "127.0.0.1")
 
 
@@ -40,6 +52,7 @@ class Settings:
     allowed_hosts: tuple[str, ...] = LOCAL_HOSTS
     rescan_seconds: float = 30
     auth: AuthSettings = field(default_factory=AuthSettings)
+    workers: tuple[WorkerEntry, ...] = ()
 
     def repository(self, repo_id: str) -> Repository:
         for repo in self.repositories:
@@ -107,10 +120,35 @@ def parse_settings(raw: dict[str, Any], base: Path) -> Settings:
             'Set up sign-in ([auth] mode = "oidc") before serving other host names; '
             "without it the studio is for this machine only"
         )
+    workers = _parse_workers(raw.get("workers", []))
     return Settings(
         repositories=tuple(repos),
+        workers=workers,
         state_dir=(base / state).resolve(strict=False),
         allowed_hosts=allowed,
         rescan_seconds=float(rescan),
         auth=auth,
     )
+
+
+def _parse_workers(entries: Any) -> tuple[WorkerEntry, ...]:
+    if not isinstance(entries, list):
+        raise ConfigError("workers must be a list")
+    found: list[WorkerEntry] = []
+    for entry in cast(list[Any], entries):
+        if not isinstance(entry, dict):
+            raise ConfigError("Each worker must be a table")
+        item = cast(dict[str, Any], entry)
+        worker_id, digest = item.get("id"), item.get("token_sha256")
+        if not isinstance(worker_id, str) or not worker_id.replace("-", "_").isidentifier():
+            raise ConfigError(f"Worker id must be a simple name, not {worker_id!r}")
+        if (
+            not isinstance(digest, str)
+            or len(digest) != 64
+            or any(c not in "0123456789abcdef" for c in digest)
+        ):
+            raise ConfigError(f"Worker {worker_id} needs token_sha256, a 64-character hex digest")
+        if any(w.id == worker_id for w in found):
+            raise ConfigError(f"Worker id {worker_id} is used twice")
+        found.append(WorkerEntry(worker_id, digest))
+    return tuple(found)

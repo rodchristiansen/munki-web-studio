@@ -2,7 +2,7 @@
 
 export interface WorkspaceState {
   repo: string | null;
-  area: "packages" | "manifests" | "activity";
+  area: "packages" | "manifests" | "activity" | "settings";
   q: string;
   group: "category" | "type" | "directory";
   path: string | null;
@@ -10,12 +10,14 @@ export interface WorkspaceState {
   job: string | null;
 }
 
+const AREAS = ["packages", "manifests", "activity", "settings"] as const;
+
 export function readState(search: string = window.location.search): WorkspaceState {
   const params = new URLSearchParams(search);
   const group = params.get("group");
   return {
     repo: params.get("repo"),
-    area: params.get("area") === "manifests" ? "manifests" : params.get("area") === "activity" ? "activity" : "packages",
+    area: AREAS.find((a) => a === params.get("area")) ?? "packages",
     q: params.get("q") ?? "",
     group: group === "type" || group === "directory" ? group : "category",
     path: params.get("path"),

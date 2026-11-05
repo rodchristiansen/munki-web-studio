@@ -1,6 +1,29 @@
 {
   "components": {
     "schemas": {
+      "Artifact": {
+        "properties": {
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "sha256": {
+            "title": "Sha256",
+            "type": "string"
+          },
+          "size": {
+            "title": "Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "path",
+          "sha256",
+          "size"
+        ],
+        "title": "Artifact",
+        "type": "object"
+      },
       "AuditEntryInfo": {
         "properties": {
           "action": {
@@ -139,6 +162,50 @@
         "title": "AuthConfig",
         "type": "object"
       },
+      "Beat": {
+        "properties": {
+          "message": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "progress": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Progress"
+          }
+        },
+        "title": "Beat",
+        "type": "object"
+      },
+      "BeatReply": {
+        "properties": {
+          "cancel": {
+            "title": "Cancel",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "cancel"
+        ],
+        "title": "BeatReply",
+        "type": "object"
+      },
       "CatalogSummary": {
         "properties": {
           "items": {
@@ -211,6 +278,74 @@
           "files"
         ],
         "title": "ChangeSetInfo",
+        "type": "object"
+      },
+      "ClaimedJob": {
+        "properties": {
+          "arguments": {
+            "additionalProperties": true,
+            "title": "Arguments",
+            "type": "object"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "input_revision": {
+            "title": "Input Revision",
+            "type": "string"
+          },
+          "lease_seconds": {
+            "title": "Lease Seconds",
+            "type": "number"
+          },
+          "operation": {
+            "title": "Operation",
+            "type": "string"
+          },
+          "repo_id": {
+            "title": "Repo Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "repo_id",
+          "operation",
+          "arguments",
+          "input_revision",
+          "lease_seconds"
+        ],
+        "title": "ClaimedJob",
+        "type": "object"
+      },
+      "Completion": {
+        "properties": {
+          "artifacts": {
+            "items": {
+              "$ref": "#/components/schemas/Artifact"
+            },
+            "maxItems": 1000,
+            "title": "Artifacts",
+            "type": "array"
+          },
+          "output": {
+            "default": "",
+            "maxLength": 8000,
+            "title": "Output",
+            "type": "string"
+          },
+          "tool_version": {
+            "maxLength": 80,
+            "title": "Tool Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "artifacts",
+          "tool_version"
+        ],
+        "title": "Completion",
         "type": "object"
       },
       "ConditionInfo": {
@@ -347,6 +482,31 @@
           "message"
         ],
         "title": "Diagnostic",
+        "type": "object"
+      },
+      "Failure": {
+        "properties": {
+          "cancelled": {
+            "default": false,
+            "description": "The worker stopped because it was asked to",
+            "title": "Cancelled",
+            "type": "boolean"
+          },
+          "error": {
+            "maxLength": 2000,
+            "title": "Error",
+            "type": "string"
+          },
+          "retryable": {
+            "default": false,
+            "title": "Retryable",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "title": "Failure",
         "type": "object"
       },
       "FieldEdit": {
@@ -494,6 +654,75 @@
           "version"
         ],
         "title": "Health",
+        "type": "object"
+      },
+      "Hello": {
+        "properties": {
+          "capabilities": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Capabilities",
+            "type": "array"
+          },
+          "os_version": {
+            "maxLength": 40,
+            "title": "Os Version",
+            "type": "string"
+          },
+          "platform": {
+            "maxLength": 40,
+            "title": "Platform",
+            "type": "string"
+          },
+          "tools": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Tool name to version, for the tools it found",
+            "title": "Tools",
+            "type": "object"
+          }
+        },
+        "required": [
+          "platform",
+          "os_version",
+          "tools",
+          "capabilities"
+        ],
+        "title": "Hello",
+        "type": "object"
+      },
+      "HelloReply": {
+        "properties": {
+          "capabilities": {
+            "description": "The capabilities the studio accepted",
+            "items": {
+              "type": "string"
+            },
+            "title": "Capabilities",
+            "type": "array"
+          },
+          "heartbeat_seconds": {
+            "title": "Heartbeat Seconds",
+            "type": "number"
+          },
+          "lease_seconds": {
+            "title": "Lease Seconds",
+            "type": "number"
+          },
+          "worker": {
+            "title": "Worker",
+            "type": "string"
+          }
+        },
+        "required": [
+          "worker",
+          "capabilities",
+          "heartbeat_seconds",
+          "lease_seconds"
+        ],
+        "title": "HelloReply",
         "type": "object"
       },
       "IncludedManifest": {
@@ -1158,6 +1387,18 @@
             "title": "Name",
             "type": "string"
           },
+          "needs": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What is missing when it is not available",
+            "title": "Needs"
+          },
           "requirements": {
             "items": {
               "type": "string"
@@ -1174,7 +1415,8 @@
           "name",
           "title",
           "requirements",
-          "available"
+          "available",
+          "needs"
         ],
         "title": "OperationInfo",
         "type": "object"
@@ -1634,6 +1876,81 @@
           "issues"
         ],
         "title": "ValidationReport",
+        "type": "object"
+      },
+      "WorkerView": {
+        "properties": {
+          "capabilities": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Capabilities",
+            "type": "array"
+          },
+          "configured": {
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "last_seen": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen"
+          },
+          "online": {
+            "title": "Online",
+            "type": "boolean"
+          },
+          "os_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Os Version"
+          },
+          "platform": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Platform"
+          },
+          "tools": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Tools",
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "configured",
+          "online",
+          "platform",
+          "os_version",
+          "tools",
+          "capabilities",
+          "last_seen"
+        ],
+        "title": "WorkerView",
         "type": "object"
       }
     }
@@ -2665,6 +2982,60 @@
         ]
       }
     },
+    "/api/repositories/{repo_id}/jobs/{job_id}/artifacts/{path}": {
+      "get": {
+        "description": "A file a finished job produced.",
+        "operationId": "download_artifact_api_repositories__repo_id__jobs__job_id__artifacts__path__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repo_id",
+            "required": true,
+            "schema": {
+              "title": "Repo Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Download Artifact",
+        "tags": [
+          "workers"
+        ]
+      }
+    },
     "/api/repositories/{repo_id}/jobs/{job_id}/cancel": {
       "post": {
         "description": "Cancel a queued job, or ask a running one to stop at its next checkpoint.",
@@ -3334,6 +3705,500 @@
         "summary": "Get Session",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/api/worker/claim": {
+      "post": {
+        "description": "Take the oldest job this worker can run, if there is one.",
+        "operationId": "claim_api_worker_claim_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-studio-worker",
+            "required": true,
+            "schema": {
+              "title": "X-Studio-Worker",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": true,
+            "schema": {
+              "title": "Authorization",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClaimedJob"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "204": {
+            "description": "Nothing to do"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Claim",
+        "tags": [
+          "workers"
+        ]
+      }
+    },
+    "/api/worker/hello": {
+      "post": {
+        "description": "The handshake: what this worker is and can do. Repeat it every so often.",
+        "operationId": "hello_api_worker_hello_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-studio-worker",
+            "required": true,
+            "schema": {
+              "title": "X-Studio-Worker",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": true,
+            "schema": {
+              "title": "Authorization",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Hello"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HelloReply"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Hello",
+        "tags": [
+          "workers"
+        ]
+      }
+    },
+    "/api/worker/jobs/{job_id}/artifacts/{path}": {
+      "put": {
+        "description": "One output file. Its hash must match the header, or it is refused.",
+        "operationId": "upload_artifact_api_worker_jobs__job_id__artifacts__path__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "title": "Path",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-content-sha256",
+            "required": true,
+            "schema": {
+              "title": "X-Content-Sha256",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-studio-worker",
+            "required": true,
+            "schema": {
+              "title": "X-Studio-Worker",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": true,
+            "schema": {
+              "title": "Authorization",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Upload Artifact Api Worker Jobs  Job Id  Artifacts  Path  Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upload Artifact",
+        "tags": [
+          "workers"
+        ]
+      }
+    },
+    "/api/worker/jobs/{job_id}/complete": {
+      "post": {
+        "description": "Finish a job. Every listed artifact must already be uploaded with that hash,\nand only artifacts listed here count; anything else uploaded is removed.",
+        "operationId": "complete_api_worker_jobs__job_id__complete_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-studio-worker",
+            "required": true,
+            "schema": {
+              "title": "X-Studio-Worker",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": true,
+            "schema": {
+              "title": "Authorization",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Completion"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Complete Api Worker Jobs  Job Id  Complete Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Complete",
+        "tags": [
+          "workers"
+        ]
+      }
+    },
+    "/api/worker/jobs/{job_id}/fail": {
+      "post": {
+        "operationId": "fail_api_worker_jobs__job_id__fail_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-studio-worker",
+            "required": true,
+            "schema": {
+              "title": "X-Studio-Worker",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": true,
+            "schema": {
+              "title": "Authorization",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Failure"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Fail Api Worker Jobs  Job Id  Fail Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Fail",
+        "tags": [
+          "workers"
+        ]
+      }
+    },
+    "/api/worker/jobs/{job_id}/heartbeat": {
+      "post": {
+        "description": "Keep the lease and report progress; the reply says whether to stop.",
+        "operationId": "heartbeat_api_worker_jobs__job_id__heartbeat_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-studio-worker",
+            "required": true,
+            "schema": {
+              "title": "X-Studio-Worker",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": true,
+            "schema": {
+              "title": "Authorization",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Beat"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BeatReply"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Heartbeat",
+        "tags": [
+          "workers"
+        ]
+      }
+    },
+    "/api/worker/jobs/{job_id}/inputs": {
+      "get": {
+        "description": "The repository files the job needs, as a gzipped tar. Refused when the\nrepository has changed since the job was queued, so the job runs on exactly\nthe revision it was asked for.",
+        "operationId": "inputs_api_worker_jobs__job_id__inputs_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-studio-worker",
+            "required": true,
+            "schema": {
+              "title": "X-Studio-Worker",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": true,
+            "schema": {
+              "title": "Authorization",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Inputs",
+        "tags": [
+          "workers"
+        ]
+      }
+    },
+    "/api/workers": {
+      "get": {
+        "description": "Every configured worker, whether it is connected, and what it can do.",
+        "operationId": "list_workers_api_workers_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/WorkerView"
+                  },
+                  "title": "Response List Workers Api Workers Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Workers",
+        "tags": [
+          "workers"
         ]
       }
     },

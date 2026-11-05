@@ -18,7 +18,7 @@ from munki_web_studio.api.read import _repo  # pyright: ignore[reportPrivateUsag
 from munki_web_studio.auth.model import Role
 from munki_web_studio.auth.routes import require
 from munki_web_studio.auth.sessions import Session
-from munki_web_studio.jobs.runner import Runner, repository_revision
+from munki_web_studio.jobs.runner import Runner, explain_missing, repository_revision
 from munki_web_studio.jobs.store import Job, JobEvent, JobStore
 
 router = APIRouter(tags=["jobs"])
@@ -32,6 +32,7 @@ class OperationInfo(BaseModel):
     title: str
     requirements: list[str]
     available: bool = Field(description="Whether a worker that can run it is connected")
+    needs: str | None = Field(description="What is missing when it is not available")
 
 
 class NewJob(BaseModel):
@@ -124,16 +125,19 @@ def _job(request: Request, repo_id: str, job_id: str) -> Job:
 def operations(request: Request, session: Viewer) -> list[OperationInfo]:
     """What jobs this studio can run, and whether a worker for each is connected."""
     runner = _runner(request)
-    runnable = set(runner.runnable())
-    return [
-        OperationInfo(
-            name=op.name,
-            title=op.title,
-            requirements=list(op.requirements),
-            available=op.name in runnable,
+    found: list[OperationInfo] = []
+    for op in runner.operations.values():
+        missing = runner.missing(op)
+        found.append(
+            OperationInfo(
+                name=op.name,
+                title=op.title,
+                requirements=list(op.requirements),
+                available=not missing,
+                needs=f"Needs {explain_missing(missing)}; none is connected" if missing else None,
+            )
         )
-        for op in runner.operations.values()
-    ]
+    return found
 
 
 @router.post("/api/repositories/{repo_id}/jobs", status_code=201)
@@ -147,11 +151,9 @@ def submit_job(
     op = runner.operations.get(body.operation)
     if op is None:
         raise HTTPException(400, f"No operation {body.operation!r}")
-    if body.operation not in runner.runnable():
-        missing = sorted(set(op.requirements) - runner.capabilities)
-        raise HTTPException(
-            409, f"{op.title} needs a worker with {', '.join(missing)}; none is connected"
-        )
+    missing = runner.missing(op)
+    if missing:
+        raise HTTPException(409, f"{op.title} needs {explain_missing(missing)}; none is connected")
     if body.arguments:
         raise HTTPException(400, f"{op.title} takes no arguments")
     job, created = _store(request).submit(

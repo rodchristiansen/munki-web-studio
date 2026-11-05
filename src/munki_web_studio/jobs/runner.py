@@ -15,6 +15,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
+from munki_web_studio import platform
+from munki_web_studio.jobs.remote import RemoteSpec
 from munki_web_studio.jobs.store import Job, JobStore, LeaseLostError
 from munki_web_studio.repository.config import Repository, Settings
 from munki_web_studio.repository.index import Index
@@ -73,6 +75,8 @@ class Operation:
     requirements: tuple[str, ...] = (PORTABLE,)
     max_attempts: int = 3
     timeout_seconds: int = 600
+    # Set for operations a worker on another machine runs with platform tools.
+    remote: RemoteSpec | None = None
 
 
 def _validate(ctx: JobContext) -> dict[str, Any]:
@@ -100,13 +104,38 @@ def _rescan(ctx: JobContext) -> dict[str, Any]:
     }
 
 
+def _remote_only(ctx: JobContext) -> None:
+    raise JobFailedError(f"{ctx.job.operation} runs on a worker, not in the studio")
+
+
 OPERATIONS: dict[str, Operation] = {
     op.name: op
     for op in (
         Operation("repository.validate", "Validate the repository", _validate),
         Operation("repository.rescan", "Re-read every file", _rescan, max_attempts=2),
+        *(
+            Operation(
+                spec.name,
+                spec.title,
+                _remote_only,
+                requirements=(spec.capability,),
+                max_attempts=spec.max_attempts,
+                timeout_seconds=spec.timeout_seconds,
+                remote=spec,
+            )
+            for spec in platform.REMOTE_OPERATIONS
+        ),
     )
 }
+
+# A worker that has not checked in for this long is treated as gone.
+WORKER_MAX_AGE = 90.0
+
+
+def explain_missing(missing: list[str]) -> str:
+    """Which tools a worker needs to offer these capabilities."""
+    tools = sorted({t for c in missing for t in platform.CAPABILITIES.get(c, (c,))})
+    return f"a {platform.WORKER_PLATFORM} worker with {', '.join(tools)}"
 
 
 class Runner:
@@ -138,11 +167,23 @@ class Runner:
         self._workers: list[threading.Thread] = []
 
     def runnable(self) -> list[str]:
+        """Operations this process runs itself."""
         return [
             name
             for name, op in self.operations.items()
-            if set(op.requirements) <= self.capabilities
+            if op.remote is None and set(op.requirements) <= self.capabilities
         ]
+
+    def capabilities_now(self) -> set[str]:
+        """This process's capabilities and those of every worker checked in lately."""
+        found = set(self.capabilities)
+        for worker in self.store.workers():
+            if self.store.online(worker, WORKER_MAX_AGE):
+                found |= set(worker.capabilities)
+        return found
+
+    def missing(self, operation: Operation) -> list[str]:
+        return sorted(set(operation.requirements) - self.capabilities_now())
 
     def start(self) -> None:
         for n in range(self._threads):

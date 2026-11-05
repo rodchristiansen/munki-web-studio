@@ -96,16 +96,19 @@ export function Activity({ repoId, canRun, selected, onSelect }: Props) {
                   key={op.name}
                   type="button"
                   disabled={!op.available}
-                  title={
-                    op.available
-                      ? undefined
-                      : `Needs a worker with ${op.requirements.join(", ")}`
-                  }
+                  aria-describedby={op.available ? undefined : `needs-${op.name}`}
                   onClick={() => void run(op.name)}
                 >
                   {op.title}
                 </button>
               ))}
+              {operations
+                .filter((op) => !op.available && op.needs)
+                .map((op) => (
+                  <p key={op.name} id={`needs-${op.name}`} className="muted needs">
+                    {op.title}: {op.needs}
+                  </p>
+                ))}
             </div>
           )}
           {error && (

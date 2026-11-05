@@ -43,7 +43,8 @@ async def record_changes(
 ) -> Response:
     """HTTP middleware: one audit entry for every request that is not a read."""
     path = request.url.path
-    if request.method in SAFE_METHODS or path.startswith("/mcp"):
+    # Workers check in every second; their routes record what matters themselves.
+    if request.method in SAFE_METHODS or path.startswith(("/mcp", "/api/worker/")):
         return await call_next(request)
     session = current_session(request)
     response = await call_next(request)

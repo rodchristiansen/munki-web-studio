@@ -7,6 +7,7 @@ import { ManifestsWorkspace } from "./components/ManifestsWorkspace";
 import { PackageEditor } from "./components/PackageEditor";
 import { PackageList } from "./components/PackageList";
 import { ReviewDialog } from "./components/ReviewDialog";
+import { Settings } from "./components/Settings";
 import { useDraft } from "./draft";
 import { readState, toSearch, type WorkspaceState } from "./url";
 
@@ -186,7 +187,7 @@ export function App() {
           </div>
         </div>
         <div className="workspace-title">
-          <strong>{state.area === "packages" ? "Packages" : state.area === "manifests" ? "Manifests" : "Activity"}</strong>
+          <strong>{state.area === "packages" ? "Packages" : state.area === "manifests" ? "Manifests" : state.area === "activity" ? "Activity" : "Settings"}</strong>
           <small>{state.area === "packages" && packages.status === "ready" ? `${pkgs.length} packages` : " "}</small>
         </div>
         <div className="top-actions">
@@ -229,6 +230,10 @@ export function App() {
             <Icon name="activity" />
             Activity
           </button>
+          <button type="button" aria-current={state.area === "settings" ? "page" : undefined} onClick={() => update({ area: "settings", q: "" })}>
+            <Icon name="grid" />
+            Settings
+          </button>
           <div className="rail-footer">
             <span className="connection-dot" /> {repo ? repo.name : "No repository"}
             <br />
@@ -269,6 +274,8 @@ export function App() {
             <Message title="Cannot reach the studio" text={repos.message} />
           ) : repos.status === "ready" && !repo ? (
             <Message title="No repository is configured" text="Add a repository to the config file and restart the studio." />
+          ) : state.area === "settings" ? (
+            <Settings repo={repo} />
           ) : state.area === "activity" && repoId ? (
             <Activity
               repoId={repoId}
