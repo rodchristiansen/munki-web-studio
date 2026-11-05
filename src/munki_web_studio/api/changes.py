@@ -17,6 +17,7 @@ from munki_web_studio.changes.apply import (
     RecoveryNeededError,
     SaveError,
     commit,
+    payload_conflicts,
     preview,
 )
 from munki_web_studio.changes.model import (
@@ -80,6 +81,13 @@ class FileDraftInfo(BaseModel):
     diff: str
 
 
+class PayloadInfo(BaseModel):
+    path: str
+    size: int
+    sha256: str
+    conflict: bool = Field(description="Something already exists at this path")
+
+
 class ChangeSetInfo(BaseModel):
     id: str
     repo_id: str
@@ -90,6 +98,10 @@ class ChangeSetInfo(BaseModel):
     created_at: str
     updated_at: str
     files: list[FileDraftInfo]
+    payloads: list[PayloadInfo] = Field(
+        default_factory=lambda: list[PayloadInfo](),
+        description="Installer files the draft adds to the repository when saved",
+    )
 
 
 def _store(request: Request) -> ChangeSetStore:
@@ -114,6 +126,23 @@ def _info(request: Request, change_set: ChangeSet) -> ChangeSetInfo:
                 diff=p.diff if p else "",
             )
         )
+    for new in change_set.new_files:
+        p = previews.get(new.path)
+        files.append(
+            FileDraftInfo(
+                path=new.path,
+                base_revision="",
+                current_revision=None,
+                changes=[],
+                conflict=p.conflict if p else False,
+                error=p.error if p else None,
+                surgical=False,
+                diff=p.diff if p else "",
+            )
+        )
+    occupied: set[str] = (
+        set(payload_conflicts(repo, change_set)) if change_set.status == "open" else set()
+    )
     return ChangeSetInfo(
         id=change_set.id,
         repo_id=change_set.repo_id,
@@ -124,6 +153,10 @@ def _info(request: Request, change_set: ChangeSet) -> ChangeSetInfo:
         created_at=change_set.created_at,
         updated_at=change_set.updated_at,
         files=files,
+        payloads=[
+            PayloadInfo(path=p.path, size=p.size, sha256=p.sha256, conflict=p.path in occupied)
+            for p in change_set.payloads
+        ],
     )
 
 
@@ -268,11 +301,17 @@ def save_change_set(
         raise HTTPException(
             428, "Clients read this repository directly; confirm that the change goes live at once"
         )
-    if not change_set.files:
+    if not change_set.files and not change_set.new_files:
         raise HTTPException(400, "This change set has no edits")
     journal_dir = request.app.state.journal_dir
     try:
-        written = commit(repo, change_set, journal_dir)
+        uploads = request.app.state.uploads
+        written = commit(
+            repo,
+            change_set,
+            journal_dir,
+            payload_source=lambda upload_id: uploads.path(uploads.get(upload_id)),
+        )
     except ConflictError as error:
         raise HTTPException(409, {"message": str(error), "paths": error.paths}) from None
     except RecoveryNeededError as error:

@@ -11,6 +11,7 @@ import contextlib
 import hashlib
 import hmac
 import io
+import re
 import secrets
 import shutil
 import tarfile
@@ -27,14 +28,18 @@ from munki_web_studio.auth.model import Role
 from munki_web_studio.auth.routes import require
 from munki_web_studio.auth.sessions import Session
 from munki_web_studio.changes.apply import SaveError
+from munki_web_studio.changes.model import Payload
+from munki_web_studio.changes.store import ChangeSetStore
 from munki_web_studio.codec import ParseError, load
 from munki_web_studio.jobs.apply import SwapAbortedError, swap_folder
+from munki_web_studio.jobs.remote import RemoteSpec
 from munki_web_studio.jobs.runner import WORKER_MAX_AGE, Runner, repository_revision
 from munki_web_studio.jobs.store import Job, JobStore, LeaseLostError
 from munki_web_studio.repository.config import Repository, Settings, WorkerEntry
 from munki_web_studio.repository.index import Index
 from munki_web_studio.repository.paths import PathEscapeError, normalize, read_contained
 from munki_web_studio.repository.scanner import scan
+from munki_web_studio.uploads import UploadError, UploadStore
 
 router = APIRouter(prefix="/api/worker", tags=["workers"])
 settings_router = APIRouter(tags=["workers"])
@@ -220,6 +225,27 @@ def inputs(request: Request, job_id: str, worker: Worker) -> Response:
     )
 
 
+@router.get("/jobs/{job_id}/upload", response_class=FileResponse)
+def upload_input(request: Request, job_id: str, worker: Worker) -> FileResponse:
+    """The installer a job works on, streamed, with its name and hash."""
+    job = _leased(request, worker, job_id)
+    spec = _runner(request).operations[job.operation].remote
+    if spec is None or spec.upload_argument is None:
+        raise HTTPException(409, "This job has no upload")
+    store: UploadStore = request.app.state.uploads
+    try:
+        upload = store.get(str(job.arguments.get(spec.upload_argument, "")))
+    except UploadError as error:
+        raise HTTPException(409, str(error)) from None
+    if not upload.complete or upload.repo_id != job.repo_id:
+        raise HTTPException(409, "The upload is not complete")
+    return FileResponse(
+        store.path(upload),
+        media_type="application/octet-stream",
+        headers={"X-Filename": upload.filename, "X-Content-SHA256": upload.sha256},
+    )
+
+
 class Beat(BaseModel):
     progress: float | None = Field(default=None, ge=0, le=1)
     message: str | None = Field(default=None, max_length=500)
@@ -317,6 +343,17 @@ def complete(request: Request, job_id: str, body: Completion, worker: Worker) ->
         "worker": worker.id,
     }
     spec = _runner(request).operations[job.operation].remote
+    if spec is not None and spec.creates_draft:
+        try:
+            result["draft"] = _import_draft(request, job, folder, spec)
+        except (ValueError, OSError, ParseError) as error:
+            message = f"The import was not drafted: {error}"
+            try:
+                failed = _store(request).fail(job.id, worker.id, message)
+            except LeaseLostError as lost:
+                raise HTTPException(409, str(lost)) from None
+            _audit(request, worker.id, "job fail", failed, {"reason": message})
+            return {"status": failed.status}
     if spec is not None and spec.applies_to:
         try:
             private = _private_copy(
@@ -368,6 +405,56 @@ def _private_copy(
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_bytes(data)
     return copy
+
+
+def _import_draft(request: Request, job: Job, folder: Path, spec: RemoteSpec) -> dict[str, Any]:
+    """Turn an import job's pkginfo into a draft for the person who started it.
+
+    The pkginfo must be a plain dictionary with a name and version, and its
+    installer_item_hash must be the upload's own SHA-256, so the worker cannot
+    describe a different file. The installer itself is never taken from the
+    worker: the draft copies the studio's own upload on save."""
+    if spec.stdout_file is None or spec.upload_argument is None:
+        raise ValueError("this operation does not produce a pkginfo")
+    raw = (folder / spec.stdout_file).read_bytes()
+    data = load(raw).data
+    if not isinstance(data, dict):
+        raise ValueError("the tool's output is not a pkginfo dictionary")
+    pkginfo = cast(dict[str, Any], data)
+    name, version = pkginfo.get("name"), pkginfo.get("version")
+    if not isinstance(name, str) or not isinstance(version, str) or not name or not version:
+        raise ValueError("the pkginfo has no name and version")
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9 ._+()-]{0,120}", f"{name}-{version}"):
+        raise ValueError(f"{name!r} {version!r} cannot be used in a file name")
+    store: UploadStore = request.app.state.uploads
+    upload = store.get(str(job.arguments[spec.upload_argument]))
+    if pkginfo.get("installer_item_hash") != upload.sha256:
+        raise ValueError("the pkginfo's installer_item_hash is not the upload's SHA-256")
+    subdirectory = str(job.arguments.get("subdirectory", ""))
+    pkginfo_path, payload_path, location = platform.import_paths(
+        name, version, upload.filename, subdirectory
+    )
+    repo = _repo(request, job.repo_id)
+    if (repo.root / payload_path).exists():
+        raise ValueError(f"{payload_path} already exists; rename the installer and import again")
+    stem, suffix = (
+        pkginfo_path.rsplit(".", 1)
+        if "." in pkginfo_path.rsplit("/", 1)[-1]
+        else (
+            pkginfo_path,
+            "",
+        )
+    )
+    candidate, number = pkginfo_path, 1
+    while (repo.root / candidate).exists():
+        candidate = f"{stem}__{number}" + (f".{suffix}" if suffix else "")
+        number += 1
+    pkginfo["installer_item_location"] = location
+    changes: ChangeSetStore = request.app.state.changes
+    draft = changes.create(repo.id, job.created_by, job.created_by_name, f"Import {name} {version}")
+    changes.put_new_file(draft.id, candidate, pkginfo)
+    changes.put_payload(draft.id, Payload(payload_path, upload.id, upload.sha256, upload.size))
+    return {"change_set": draft.id, "pkginfo": candidate, "payload": payload_path}
 
 
 class CancelledApplyError(Exception):

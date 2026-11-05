@@ -389,6 +389,14 @@
             "title": "Owner Name",
             "type": "string"
           },
+          "payloads": {
+            "description": "Installer files the draft adds to the repository when saved",
+            "items": {
+              "$ref": "#/components/schemas/PayloadInfo"
+            },
+            "title": "Payloads",
+            "type": "array"
+          },
           "repo_id": {
             "title": "Repo Id",
             "type": "string"
@@ -1382,6 +1390,32 @@
         "title": "NewJob",
         "type": "object"
       },
+      "NewUpload": {
+        "properties": {
+          "filename": {
+            "maxLength": 200,
+            "title": "Filename",
+            "type": "string"
+          },
+          "sha256": {
+            "maxLength": 64,
+            "minLength": 64,
+            "title": "Sha256",
+            "type": "string"
+          },
+          "size": {
+            "title": "Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "filename",
+          "size",
+          "sha256"
+        ],
+        "title": "NewUpload",
+        "type": "object"
+      },
       "ObjectDetail": {
         "properties": {
           "catalogs": {
@@ -1803,6 +1837,35 @@
         "title": "PackageVersion",
         "type": "object"
       },
+      "PayloadInfo": {
+        "properties": {
+          "conflict": {
+            "description": "Something already exists at this path",
+            "title": "Conflict",
+            "type": "boolean"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "sha256": {
+            "title": "Sha256",
+            "type": "string"
+          },
+          "size": {
+            "title": "Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "path",
+          "size",
+          "sha256",
+          "conflict"
+        ],
+        "title": "PayloadInfo",
+        "type": "object"
+      },
       "PublishingInfo": {
         "properties": {
           "current": {
@@ -2100,6 +2163,45 @@
           "role"
         ],
         "title": "TokenResponse",
+        "type": "object"
+      },
+      "UploadInfo": {
+        "properties": {
+          "complete": {
+            "title": "Complete",
+            "type": "boolean"
+          },
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "received": {
+            "description": "Bytes that have arrived; send the next chunk from here",
+            "title": "Received",
+            "type": "integer"
+          },
+          "sha256": {
+            "title": "Sha256",
+            "type": "string"
+          },
+          "size": {
+            "title": "Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "filename",
+          "size",
+          "sha256",
+          "received",
+          "complete"
+        ],
+        "title": "UploadInfo",
         "type": "object"
       },
       "ValidationError": {
@@ -4099,6 +4201,170 @@
         ]
       }
     },
+    "/api/repositories/{repo_id}/uploads": {
+      "post": {
+        "description": "Declare an installer to upload. Nothing reaches the repository until a\nreviewed draft that uses it is saved.",
+        "operationId": "create_upload_api_repositories__repo_id__uploads_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repo_id",
+            "required": true,
+            "schema": {
+              "title": "Repo Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewUpload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Upload",
+        "tags": [
+          "uploads"
+        ]
+      }
+    },
+    "/api/repositories/{repo_id}/uploads/{upload_id}": {
+      "get": {
+        "description": "How much has arrived, so an interrupted upload can resume.",
+        "operationId": "get_upload_api_repositories__repo_id__uploads__upload_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repo_id",
+            "required": true,
+            "schema": {
+              "title": "Repo Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "upload_id",
+            "required": true,
+            "schema": {
+              "title": "Upload Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Upload",
+        "tags": [
+          "uploads"
+        ]
+      },
+      "patch": {
+        "description": "Send the next chunk. `Upload-Offset` must equal the bytes received so far.",
+        "operationId": "append_upload_api_repositories__repo_id__uploads__upload_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repo_id",
+            "required": true,
+            "schema": {
+              "title": "Repo Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "upload_id",
+            "required": true,
+            "schema": {
+              "title": "Upload Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "upload-offset",
+            "required": true,
+            "schema": {
+              "title": "Upload-Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Append Upload",
+        "tags": [
+          "uploads"
+        ]
+      }
+    },
     "/api/repositories/{repo_id}/validation": {
       "get": {
         "description": "Parse errors, missing references, include cycles, and missing payloads.",
@@ -4683,6 +4949,60 @@
           }
         },
         "summary": "Inputs",
+        "tags": [
+          "workers"
+        ]
+      }
+    },
+    "/api/worker/jobs/{job_id}/upload": {
+      "get": {
+        "description": "The installer a job works on, streamed, with its name and hash.",
+        "operationId": "upload_input_api_worker_jobs__job_id__upload_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-studio-worker",
+            "required": true,
+            "schema": {
+              "title": "X-Studio-Worker",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": true,
+            "schema": {
+              "title": "Authorization",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upload Input",
         "tags": [
           "workers"
         ]

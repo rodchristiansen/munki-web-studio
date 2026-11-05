@@ -17,6 +17,10 @@ IGNORED_NAMES = frozenset({".DS_Store", ".gitkeep", "Thumbs.db"})
 # Folders a Munki client downloads, which publishing copies into a release.
 PUBLISHED_FOLDERS = ("catalogs", "manifests", "pkgs", "icons", "client_resources")
 
+# Installer files an import accepts, and the format a new pkginfo is written in.
+IMPORT_SUFFIXES = (".pkg", ".mpkg", ".dmg")
+NEW_PKGINFO_SUFFIX = ".plist"
+
 # Workers. A Mac worker runs these Munki tools and nothing else, from these paths.
 WORKER_PLATFORM = "macOS"
 WORKER_TOOLS = {
@@ -46,6 +50,21 @@ REMOTE_OPERATIONS = (
         applies_to="catalogs",
         check=catalogs.check_output,
         arguments=frozenset({"acknowledge_live"}),
+    ),
+    RemoteSpec(
+        name="package.import",
+        title="Import a package",
+        capability="installer.inspect",
+        tool="makepkginfo",
+        # makepkginfo reads the installer and prints a pkginfo; it installs nothing.
+        args=("create", "{upload}"),
+        inputs=(),
+        outputs="out",
+        upload_argument="upload",
+        stdout_file="out/pkginfo.plist",
+        creates_draft=True,
+        arguments=frozenset({"upload", "subdirectory"}),
+        max_attempts=1,
     ),
 )
 
@@ -169,3 +188,18 @@ def _texts(value: Any) -> list[str]:
     return (
         [v for v in cast(list[Any], value) if isinstance(v, str)] if isinstance(value, list) else []
     )
+
+
+def dump_new_pkginfo(data: Any) -> bytes:
+    """The bytes of a new pkginfo file: an XML plist, as makepkginfo writes."""
+    from munki_web_studio.codec import plistfile
+
+    return plistfile.dump(data, binary=False)
+
+
+def import_paths(name: str, version: str, filename: str, subdirectory: str) -> tuple[str, str, str]:
+    """Where an imported package's pkginfo and installer go, and the
+    installer_item_location that points from one to the other."""
+    folder = f"{subdirectory}/" if subdirectory else ""
+    location = f"{folder}{filename}"
+    return f"pkgsinfo/{folder}{name}-{version}{NEW_PKGINFO_SUFFIX}", f"pkgs/{location}", location

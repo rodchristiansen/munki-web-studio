@@ -1,6 +1,6 @@
 """Change sets: a person's draft edits, each pinned to the revision it was made on."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, cast
 
 from munki_web_studio import tagged
@@ -19,6 +19,24 @@ class FileDraft:
 
 
 @dataclass(frozen=True)
+class NewFile:
+    """A metadata file the draft creates. Saving refuses if the path exists."""
+
+    path: str
+    data: Any
+
+
+@dataclass(frozen=True)
+class Payload:
+    """An uploaded installer the draft copies into the repository on save."""
+
+    path: str
+    upload_id: str
+    sha256: str
+    size: int
+
+
+@dataclass(frozen=True)
 class ChangeSet:
     id: str
     repo_id: str
@@ -29,6 +47,8 @@ class ChangeSet:
     created_at: str
     updated_at: str
     files: list[FileDraft]
+    new_files: list[NewFile] = field(default_factory=lambda: list[NewFile]())
+    payloads: list[Payload] = field(default_factory=lambda: list[Payload]())
 
 
 def change_to_json(change: Change) -> dict[str, Any]:
