@@ -174,6 +174,8 @@ def validate(index: Index, repo: Repository) -> list[Issue]:
     for obj in graph.objects:
         if obj.status != "ok":
             continue
+        for problem in obj.summary.get("problems", []):
+            issues.append(Issue(problem["severity"], problem["code"], obj.path, problem["message"]))
         for text in object_conditions(graph, obj):
             report = conditions.analyze(text)
             if report.error:
