@@ -10,6 +10,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+# Bump when the stored fields change; an index with another version is rebuilt.
+SCHEMA_VERSION = 2
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS objects (
     repo_id TEXT NOT NULL,
@@ -71,7 +74,10 @@ class Index:
         self._db = sqlite3.connect(path, check_same_thread=False)
         self._db.row_factory = sqlite3.Row
         self._db.execute("PRAGMA journal_mode=WAL")
+        if self._db.execute("PRAGMA user_version").fetchone()[0] != SCHEMA_VERSION:
+            self._db.executescript("DROP TABLE IF EXISTS objects; DROP TABLE IF EXISTS scans;")
         self._db.executescript(SCHEMA)
+        self._db.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
 
     def close(self) -> None:
         self._db.close()

@@ -76,3 +76,25 @@ class RepositoryInfo(BaseModel):
     name: str
     writable: bool
     last_scan: ScanSummary | None
+
+
+class ReferenceInfo(BaseModel):
+    source: str = Field(description="Path of the object that holds the reference")
+    field: str
+    target: str
+    condition: str | None
+
+
+class ValidationIssue(BaseModel):
+    severity: str = Field(description="error or warning")
+    code: str
+    path: str
+    message: str
+    field: str | None = None
+    target: str | None = None
+
+
+class ValidationReport(BaseModel):
+    errors: int
+    warnings: int
+    issues: list[ValidationIssue]
