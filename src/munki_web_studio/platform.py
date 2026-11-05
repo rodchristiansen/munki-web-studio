@@ -14,6 +14,9 @@ SUFFIXES: frozenset[str] | None = None
 IGNORED_NAMES = frozenset({".DS_Store", ".gitkeep", "Thumbs.db"})
 
 
+# Folders a Munki client downloads, which publishing copies into a release.
+PUBLISHED_FOLDERS = ("catalogs", "manifests", "pkgs", "icons", "client_resources")
+
 # Workers. A Mac worker runs these Munki tools and nothing else, from these paths.
 WORKER_PLATFORM = "macOS"
 WORKER_TOOLS = {

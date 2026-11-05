@@ -565,6 +565,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/repositories/{repo_id}/publishing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Publishing */
+        get: operations["publishing_api_repositories__repo_id__publishing_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/repositories/{repo_id}/rescan": {
         parameters: {
             query?: never;
@@ -1447,6 +1464,24 @@ export interface components {
             /** Version */
             version: string | null;
         };
+        /** PublishingInfo */
+        PublishingInfo: {
+            current: components["schemas"]["ReleaseInfo"] | null;
+            /**
+             * Mode
+             * @description live: clients read the repository itself; snapshot; or none
+             */
+            mode: string;
+            /** Releases */
+            releases: components["schemas"]["ReleaseInfo"][];
+            /** Target */
+            target: string | null;
+            /**
+             * Unpublished Changes
+             * @description The repository changed since the current release was published
+             */
+            unpublished_changes: boolean;
+        };
         /** ReferenceInfo */
         ReferenceInfo: {
             /** Condition */
@@ -1460,6 +1495,19 @@ export interface components {
             source: string;
             /** Target */
             target: string;
+        };
+        /** ReleaseInfo */
+        ReleaseInfo: {
+            /** Bytes */
+            bytes: number;
+            /** Files */
+            files: number;
+            /** Id */
+            id: string;
+            /** Published At */
+            published_at: string;
+            /** Repository Revision */
+            repository_revision: string;
         };
         /** RepositoryInfo */
         RepositoryInfo: {
@@ -2579,6 +2627,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Package"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    publishing_api_repositories__repo_id__publishing_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                repo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublishingInfo"];
                 };
             };
             /** @description Validation Error */

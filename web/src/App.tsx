@@ -194,6 +194,7 @@ export function App() {
             <strong>{repo?.name ?? "No repository"}</strong>
             <div>
               <small>{repo ? (repo.writable ? "Writable" : "Read-only") : "Not configured"}</small>
+              {repo?.live && <small className="condition"> · Live on save</small>}
               {git?.enabled && (
                 <small className="branch" title={git.head ?? undefined}>
                   {" · "}

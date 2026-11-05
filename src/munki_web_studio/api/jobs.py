@@ -151,6 +151,14 @@ def submit_job(
     op = runner.operations.get(body.operation)
     if op is None:
         raise HTTPException(400, f"No operation {body.operation!r}")
+    if session.user.role < op.role:
+        raise HTTPException(403, f"{op.title} needs the {op.role.label} role")
+    if op.name == "repository.publish" and repo.publish is None:
+        raise HTTPException(
+            409,
+            "This repository has no publish target"
+            + ("; clients read it directly, so every save is live" if repo.live else ""),
+        )
     missing = runner.missing(op)
     if missing:
         raise HTTPException(409, f"{op.title} needs {explain_missing(missing)}; none is connected")
