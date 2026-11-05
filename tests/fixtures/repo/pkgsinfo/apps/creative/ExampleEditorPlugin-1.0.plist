@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>name</key>
+	<string>ExampleEditorPlugin</string>
+	<key>display_name</key>
+	<string>Example EditorPlugin</string>
+	<key>version</key>
+	<string>1.0</string>
+	<key>catalogs</key>
+	<array>
+		<string>testing</string>
+	</array>
+	<key>category</key>
+	<string>Creative</string>
+	<key>developer</key>
+	<string>Example Co</string>
+	<key>description</key>
+	<string>Invented ExampleEditorPlugin package for tests.</string>
+	<key>installer_item_location</key>
+	<string>apps/ExampleEditorPlugin-1.0.pkg</string>
+	<key>installer_item_hash</key>
+	<string>0000000000000000000000000000000000000000000000000000000000000000</string>
+	<key>installer_item_size</key>
+	<integer>1024</integer>
+	<key>minimum_os_version</key>
+	<string>13.0</string>
+	<key>unattended_install</key>
+	<true/>
+	<key>_metadata</key>
+	<dict>
+		<key>created_by</key>
+		<string>fixture</string>
+		<key>creation_date</key>
+		<date>2026-10-20T09:30:00Z</date>
+	</dict>
+	<key>receipts</key>
+	<array>
+		<dict>
+			<key>packageid</key>
+			<string>com.example.exampleeditorplugin</string>
+			<key>version</key>
+			<string>1.0</string>
+			<key>optional</key>
+			<false/>
+		</dict>
+	</array>
+	<key>update_for</key>
+	<array>
+		<string>ExampleEditor</string>
+	</array>
+</dict>
+</plist>

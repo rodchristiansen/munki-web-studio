@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>name</key>
+	<string>ExampleEditor</string>
+	<key>display_name</key>
+	<string>Example Editor</string>
+	<key>version</key>
+	<string>2.10</string>
+	<key>catalogs</key>
+	<array>
+		<string>testing</string>
+		<string>production</string>
+	</array>
+	<key>category</key>
+	<string>Creative</string>
+	<key>developer</key>
+	<string>Example Co</string>
+	<key>description</key>
+	<string>Invented ExampleEditor package for tests.</string>
+	<key>installer_item_location</key>
+	<string>apps/ExampleEditor-2.10.dmg</string>
+	<key>installer_item_hash</key>
+	<string>0000000000000000000000000000000000000000000000000000000000000000</string>
+	<key>installer_item_size</key>
+	<integer>1024</integer>
+	<key>minimum_os_version</key>
+	<string>13.0</string>
+	<key>unattended_install</key>
+	<true/>
+	<key>_metadata</key>
+	<dict>
+		<key>created_by</key>
+		<string>fixture</string>
+		<key>creation_date</key>
+		<date>2026-10-20T09:30:00Z</date>
+	</dict>
+	<key>installer_type</key>
+	<string>copy_from_dmg</string>
+	<key>items_to_copy</key>
+	<array>
+		<dict>
+			<key>source_item</key>
+			<string>ExampleEditor.app</string>
+			<key>destination_path</key>
+			<string>/Applications</string>
+		</dict>
+	</array>
+	<key>installs</key>
+	<array>
+		<dict>
+			<key>type</key>
+			<string>application</string>
+			<key>path</key>
+			<string>/Applications/ExampleEditor.app</string>
+			<key>CFBundleShortVersionString</key>
+			<string>2.10</string>
+		</dict>
+	</array>
+	<key>requires</key>
+	<array>
+		<string>ExampleRuntime</string>
+	</array>
+	<key>postinstall_script</key>
+	<string>#!/bin/sh
+echo "done &amp; &lt;ok&gt;"
+exit 0
+</string>
+	<key>installed_size</key>
+	<integer>9007199254740993</integer>
+	<key>x_unknown_site_key</key>
+	<dict>
+		<key>nested</key>
+		<array>
+			<integer>1</integer>
+			<real>2.5</real>
+			<string>three</string>
+		</array>
+	</dict>
+</dict>
+</plist>

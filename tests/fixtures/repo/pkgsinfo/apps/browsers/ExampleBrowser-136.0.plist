@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>name</key>
+	<string>ExampleBrowser</string>
+	<key>display_name</key>
+	<string>Example Browser</string>
+	<key>version</key>
+	<string>136.0</string>
+	<key>catalogs</key>
+	<array>
+		<string>testing</string>
+	</array>
+	<key>category</key>
+	<string>Browsers</string>
+	<key>developer</key>
+	<string>Example Co</string>
+	<key>description</key>
+	<string>Invented ExampleBrowser package for tests.</string>
+	<key>installer_item_location</key>
+	<string>apps/ExampleBrowser-136.0.dmg</string>
+	<key>installer_item_hash</key>
+	<string>0000000000000000000000000000000000000000000000000000000000000000</string>
+	<key>installer_item_size</key>
+	<integer>1024</integer>
+	<key>minimum_os_version</key>
+	<string>13.0</string>
+	<key>unattended_install</key>
+	<true/>
+	<key>_metadata</key>
+	<dict>
+		<key>created_by</key>
+		<string>fixture</string>
+		<key>creation_date</key>
+		<date>2026-10-20T09:30:00Z</date>
+	</dict>
+	<key>installer_type</key>
+	<string>copy_from_dmg</string>
+	<key>items_to_copy</key>
+	<array>
+		<dict>
+			<key>source_item</key>
+			<string>ExampleBrowser.app</string>
+			<key>destination_path</key>
+			<string>/Applications</string>
+		</dict>
+	</array>
+	<key>installs</key>
+	<array>
+		<dict>
+			<key>type</key>
+			<string>application</string>
+			<key>path</key>
+			<string>/Applications/ExampleBrowser.app</string>
+			<key>CFBundleShortVersionString</key>
+			<string>136.0</string>
+		</dict>
+	</array>
+</dict>
+</plist>
