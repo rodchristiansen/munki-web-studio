@@ -20,6 +20,9 @@ export const PLATFORM = {
   descriptionLabel: "Shown in Managed Software Center",
 };
 
+// Installer files an import accepts.
+export const IMPORT_ACCEPT = ".pkg,.mpkg,.dmg";
+
 // Manifest keys the manifests workspace edits, in the order it shows them.
 export const MANIFEST_INCLUDES = "included_manifests";
 export const MANIFEST_SECTIONS = [

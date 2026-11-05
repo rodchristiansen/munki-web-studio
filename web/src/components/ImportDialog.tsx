@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api/client";
+import { IMPORT_ACCEPT } from "../platform";
 
 const CHUNK_BYTES = 8 * 1024 * 1024;
 // WebCrypto hashes a whole buffer at once, so larger files go through the CLI.
@@ -158,7 +159,7 @@ export function ImportDialog({ repoId, available, needs, onClose, onDrafted }: P
         {!available && <p className="condition">{needs ?? "No worker can read packages right now."}</p>}
         <label className="field">
           Installer
-          <input type="file" accept=".pkg,.mpkg,.dmg" disabled={working} onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+          <input type="file" accept={IMPORT_ACCEPT} disabled={working} onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
         </label>
         <label className="field">
           Folder under pkgs and pkgsinfo
