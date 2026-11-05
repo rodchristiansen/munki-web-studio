@@ -30,6 +30,17 @@ with help text and shell completion.
 Install with `uv tool install` or `pipx` on macOS, Windows, and Linux. A
 single-file executable for machines without Python is a later option.
 
+## Commands
+
+| Product | Command |
+| --- | --- |
+| Munki Web Studio | `mwsctl` |
+| Cimian Web Studio | `cwsctl` |
+| FleetMate Web Admin | `fmwsctl` |
+
+Each studio installs only its own command. `mwsctl` knows nothing about
+Cimian, and `cwsctl` nothing about Munki.
+
 ## Two modes
 
 - **Remote.** The CLI talks to a running studio's API. Sign-in uses the OIDC
@@ -52,10 +63,11 @@ ask for confirmation unless `--yes` is passed by a user who holds the role.
 
 ## Inside FleetMate
 
-Each studio's CLI can point at a FleetMate deployment with the studio's prefix.
-FleetMate needs no CLI of its own.
+FleetMate's `fmwsctl` includes both studios' commands as subcommands
+(`fmwsctl munki …`, `fmwsctl cimian …`), taken from the installed studio
+packages, plus commands for the combined deployment. Each studio's own command
+can also point at a FleetMate deployment with the studio's prefix.
 
 ## Not yet decided
 
-- Command names. Each studio has its own command, one per studio; the names
-  are chosen before the CLI is built.
+- The subcommand list, settled when the first slice is built.
